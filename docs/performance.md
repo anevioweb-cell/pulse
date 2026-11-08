@@ -53,3 +53,24 @@ Tailwind v4's automatic source detection scanned every non-ignored file, includi
 | ----- | ----------------------- | ----------------------- | ------------ |
 | CSS   | 8.37 kB / 2.26 kB gz    | 4.93 kB / 1.71 kB gz    | −0.55 kB     |
 | JS    | 219.79 kB / 68.72 kB gz | 219.79 kB / 68.72 kB gz | 0            |
+
+## End of Phase 2A (tokens, theming, typography)
+
+| Asset | Phase 1 baseline (React 18) | After React 19 + Tailwind scoping | End of Phase 2A         | Delta vs React 19 (gzip) |
+| ----- | --------------------------- | --------------------------------- | ----------------------- | ------------------------ |
+| JS    | 140.86 kB / 45.80 kB gz     | 219.79 kB / 68.72 kB gz           | 267.20 kB / 83.61 kB gz | +14.89 kB                |
+| CSS   | 8.35 kB / 2.25 kB gz        | 4.93 kB / 1.71 kB gz              | 20.03 kB / 5.23 kB gz   | +3.52 kB                 |
+| HTML  | 0.45 kB / 0.29 kB gz        | 0.45 kB / 0.29 kB gz              | 0.59 kB / 0.36 kB gz    | +0.07 kB                 |
+
+Where the +14.89 kB gzip of JS comes from, measured by building with and without each piece:
+
+| Addition                          | Min + gzip | How it was measured                                           |
+| --------------------------------- | ---------- | ------------------------------------------------------------- |
+| `tailwind-merge` (via `cn()`)     | ~9.03 kB   | Build with `cn()` reduced to `clsx` only: 74.58 → 83.61 kB gz |
+| `zod/mini` + theme module         | ~3.45 kB   | 68.72 → 72.17 kB gz (classic `zod` would be ~15 kB, ADR 0006) |
+| Foundations preview page + `clsx` | ~2.41 kB   | 72.17 → 74.58 kB gz                                           |
+
+- **CSS** grew with the token variables (both themes), the `@font-face` rules, and the utilities the preview page uses. The preview page is temporary (Phase 2B moves it into Storybook).
+- **Fonts** are separate files, fetched only when a glyph in their `unicode-range` is used: Inter latin 48.25 kB, Vazirmatn arabic 46.30 kB, JetBrains Mono latin 40.40 kB (woff2, already compressed).
+- **No-flash script:** `public/theme-init.js` is 0.6 kB and render-blocking by design (ADR 0005).
+- **Watch item for Phase 6:** `tailwind-merge` is now the largest dependency after React. Options are a reduced `createTailwindMerge` config, `twJoin` where conflicts are impossible, or relying on cva variants so merging is rarely needed.
