@@ -1,5 +1,6 @@
 import { fileURLToPath, URL } from 'node:url';
 
+import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
@@ -7,7 +8,7 @@ import { defineConfig } from 'vite';
 const srcDir = (subdir: string) => fileURLToPath(new URL(`./src/${subdir}`, import.meta.url));
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       '@/app': srcDir('app'),
