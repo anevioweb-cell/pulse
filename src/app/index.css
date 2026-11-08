@@ -2,3 +2,5 @@
 @import 'tailwindcss' source(none);
 @source '../';
 @source '../../index.html';
+
+@import '../shared/styles/tokens.css';

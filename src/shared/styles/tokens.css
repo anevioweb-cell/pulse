@@ -1,0 +1,215 @@
+/*
+ * Pulse design tokens. See docs/design-system.md ("Token architecture") and ADR 0004.
+ *
+ * Layer 1, primitives (:root): raw scales. Never used directly by components.
+ * Layer 2, semantic roles (@theme for light, :root[data-theme='dark'] for dark): what components use.
+ *
+ * Colors are sRGB hex so they can be parsed by the contrast test (tokens.test.ts).
+ * Scales were generated from OKLCH ramps (even perceptual lightness steps per hue).
+ */
+
+/* ---------------------------------------------------------------------------------------------- */
+/* Layer 1: primitives                                                                            */
+/* ---------------------------------------------------------------------------------------------- */
+
+:root {
+  --neutral-0: #ffffff;
+  --neutral-50: #f6f7f8;
+  --neutral-100: #ebedef;
+  --neutral-200: #d8dbdf;
+  --neutral-300: #bdc1c7;
+  --neutral-400: #9da2a9;
+  --neutral-500: #81878d;
+  --neutral-600: #6a6f76;
+  --neutral-700: #575b61;
+  --neutral-800: #42454a;
+  --neutral-900: #2e3134;
+  --neutral-950: #1d1f22;
+  --neutral-975: #111418;
+  --neutral-1000: #090c10;
+
+  --brand-50: #e4fdfc;
+  --brand-100: #cbf7f6;
+  --brand-200: #9debea;
+  --brand-300: #57d7d7;
+  --brand-400: #01b8b9;
+  --brand-500: #0c9999;
+  --brand-600: #017f7f;
+  --brand-700: #066868;
+  --brand-800: #025050;
+  --brand-900: #003839;
+  --brand-950: #012525;
+
+  --green-50: #eafded;
+  --green-100: #d6f7db;
+  --green-200: #b1ecbc;
+  --green-300: #81d894;
+  --green-400: #4ebb6c;
+  --green-500: #20a04e;
+  --green-600: #02853c;
+  --green-700: #016e30;
+  --green-800: #025424;
+  --green-900: #013b17;
+  --green-950: #00270d;
+
+  --amber-50: #fef5eb;
+  --amber-100: #fee9d1;
+  --amber-200: #fed2a0;
+  --amber-300: #f6b25e;
+  --amber-400: #dd8e0a;
+  --amber-500: #b87501;
+  --amber-600: #996103;
+  --amber-700: #7e4f01;
+  --amber-800: #613c01;
+  --amber-900: #452901;
+  --amber-950: #2f1a00;
+
+  --red-50: #fff4f3;
+  --red-100: #fee7e4;
+  --red-200: #fecdc8;
+  --red-300: #fea69e;
+  --red-400: #ff6b65;
+  --red-500: #e64343;
+  --red-600: #c9222b;
+  --red-700: #aa0d1d;
+  --red-800: #860012;
+  --red-900: #610009;
+  --red-950: #420105;
+
+  --blue-50: #f2f7fe;
+  --blue-100: #e1eeff;
+  --blue-200: #c4ddfe;
+  --blue-300: #97c4fe;
+  --blue-400: #5aa3ff;
+  --blue-500: #3186e9;
+  --blue-600: #106dce;
+  --blue-700: #0159ae;
+  --blue-800: #004387;
+  --blue-900: #002f62;
+  --blue-950: #001e43;
+
+  /* Colorblind-safe chart hues, based on the Okabe-Ito palette (Okabe and Ito, 2008). Light
+     variants are darkened and dark variants lightened so each series keeps >= 3:1 against every
+     surface (WCAG 1.4.11). Series 6 is the palette's neutral ("black") role. */
+  --chart-blue-light: #0072b2;
+  --chart-vermillion-light: #c45500;
+  --chart-green-light: #00845f;
+  --chart-purple-light: #a8457f;
+  --chart-ochre-light: #9a6b00;
+  --chart-gray-light: #5c636b;
+  --chart-blue-dark: #56b4e9;
+  --chart-vermillion-dark: #f0803c;
+  --chart-green-dark: #2ec4a0;
+  --chart-purple-dark: #e08fc0;
+  --chart-ochre-dark: #e6b422;
+  --chart-gray-dark: #b8bfc8;
+
+  /* Theme-dependent shadow tint. */
+  --shadow-tint: rgb(9 12 16 / 0.08);
+  --shadow-tint-strong: rgb(9 12 16 / 0.14);
+
+  color-scheme: light;
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* Layer 2: semantic roles, light theme (default), exposed to Tailwind                            */
+/* ---------------------------------------------------------------------------------------------- */
+
+@theme {
+  /* Drop Tailwind's default palette and scales so only project tokens exist. */
+  --color-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --ease-*: initial;
+  --animate-*: initial;
+
+  --color-surface: var(--neutral-50);
+  --color-surface-raised: var(--neutral-0);
+  --color-surface-sunken: var(--neutral-100);
+  --color-text: var(--neutral-950);
+  --color-text-muted: var(--neutral-700);
+  --color-border: var(--neutral-200);
+  --color-border-strong: var(--neutral-500);
+  --color-accent: var(--brand-700);
+  --color-accent-foreground: var(--neutral-0);
+  --color-success: var(--green-700);
+  --color-warning: var(--amber-700);
+  --color-danger: var(--red-700);
+  --color-info: var(--blue-700);
+  --color-focus-ring: var(--brand-600);
+
+  --color-chart-1: var(--chart-blue-light);
+  --color-chart-2: var(--chart-vermillion-light);
+  --color-chart-3: var(--chart-green-light);
+  --color-chart-4: var(--chart-purple-light);
+  --color-chart-5: var(--chart-ochre-light);
+  --color-chart-6: var(--chart-gray-light);
+
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+
+  --shadow-sm: 0 1px 2px 0 var(--shadow-tint);
+  --shadow-md: 0 2px 4px -1px var(--shadow-tint), 0 4px 8px -2px var(--shadow-tint);
+  --shadow-lg: 0 4px 8px -2px var(--shadow-tint), 0 12px 24px -4px var(--shadow-tint-strong);
+
+  --transition-duration-instant: 50ms;
+  --transition-duration-fast: 120ms;
+  --transition-duration-normal: 200ms;
+  --transition-duration-slow: 320ms;
+  --default-transition-duration: var(--transition-duration-normal);
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.3, 0, 1, 1);
+  --default-transition-timing-function: var(--ease-standard);
+
+  --z-index-base: 0;
+  --z-index-raised: 10;
+  --z-index-sticky: 100;
+  --z-index-dropdown: 200;
+  --z-index-overlay: 300;
+  --z-index-modal: 400;
+  --z-index-toast: 500;
+  --z-index-tooltip: 600;
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* Layer 2: semantic roles, dark theme                                                            */
+/* ---------------------------------------------------------------------------------------------- */
+
+:root[data-theme='dark'] {
+  --color-surface: var(--neutral-975);
+  --color-surface-raised: var(--neutral-950);
+  --color-surface-sunken: var(--neutral-1000);
+  --color-text: var(--neutral-50);
+  --color-text-muted: var(--neutral-400);
+  --color-border: var(--neutral-800);
+  --color-border-strong: var(--neutral-500);
+  --color-accent: var(--brand-400);
+  --color-accent-foreground: var(--neutral-1000);
+  --color-success: var(--green-400);
+  --color-warning: var(--amber-400);
+  --color-danger: var(--red-400);
+  --color-info: var(--blue-400);
+  --color-focus-ring: var(--brand-400);
+
+  --color-chart-1: var(--chart-blue-dark);
+  --color-chart-2: var(--chart-vermillion-dark);
+  --color-chart-3: var(--chart-green-dark);
+  --color-chart-4: var(--chart-purple-dark);
+  --color-chart-5: var(--chart-ochre-dark);
+  --color-chart-6: var(--chart-gray-dark);
+
+  --shadow-tint: rgb(0 0 0 / 0.4);
+  --shadow-tint-strong: rgb(0 0 0 / 0.6);
+
+  color-scheme: dark;
+}
+
+/* `dark:` variant follows the data-theme attribute, not the media query. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
