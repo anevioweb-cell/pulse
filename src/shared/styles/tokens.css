@@ -124,6 +124,33 @@
   --drop-shadow-*: initial;
   --ease-*: initial;
   --animate-*: initial;
+  --font-*: initial;
+  --text-*: initial;
+
+  /* Typography. Inter has no Arabic glyphs, so Arabic text falls through to Vazirmatn per character.
+     Faces are declared in fonts.css. */
+  --font-sans:
+    'Inter Variable', 'Vazirmatn Variable', ui-sans-serif, system-ui, sans-serif,
+    'Apple Color Emoji', 'Segoe UI Emoji';
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Type scale (major second up to lg, then major third), each with a paired line height. */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: 2.25rem;
+  --text-4xl: 2.25rem;
+  --text-4xl--line-height: 2.5rem;
 
   --color-surface: var(--neutral-50);
   --color-surface-raised: var(--neutral-0);
@@ -209,6 +236,13 @@
   --shadow-tint-strong: rgb(0 0 0 / 0.6);
 
   color-scheme: dark;
+}
+
+/* Numeric values (telemetry readings, counters, timestamps): monospace, fixed-width digits, and a
+   slashed zero so values do not jitter as they update and 0/O are unambiguous. */
+@utility numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums slashed-zero;
 }
 
 /* `dark:` variant follows the data-theme attribute, not the media query. */

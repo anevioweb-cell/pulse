@@ -3,4 +3,11 @@
 @source '../';
 @source '../../index.html';
 
+@import '../shared/styles/fonts.css';
 @import '../shared/styles/tokens.css';
+
+@layer base {
+  body {
+    @apply bg-surface font-sans text-base text-text antialiased;
+  }
+}
