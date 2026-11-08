@@ -17,6 +17,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "analyze": "tsc -b && vite build --mode analyze",
     "prepare": "husky"
   },
   "dependencies": {
@@ -48,6 +49,7 @@
     "jsdom": "^31.0.0",
     "lint-staged": "^17.6.0",
     "prettier": "^3.9.10",
+    "rollup-plugin-visualizer": "^7.1.3",
     "tailwindcss": "^4.3.5",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.72.1",
