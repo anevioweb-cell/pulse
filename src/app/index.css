@@ -1,1 +1,4 @@
-@import 'tailwindcss';
+/* Scan only application sources, not docs or config (paths are relative to this file). */
+@import 'tailwindcss' source(none);
+@source '../';
+@source '../../index.html';
