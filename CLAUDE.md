@@ -70,6 +70,7 @@ Invalid data is handled explicitly (dropped, logged, or surfaced), never cast th
 
 - Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`, etc.), with an optional scope, e.g. `feat(telemetry): add reconnecting socket`.
 - Small, focused commits: one logical change each.
+- Never add `Co-Authored-By` trailers, "Generated with Claude Code" lines, session links, or any other AI attribution to commit messages, PR descriptions, or code comments. Commits are authored solely by the repository owner. This is also enforced in `.claude/settings.json` (`attribution`).
 
 ## Decisions (ADRs)
 
