@@ -11,7 +11,23 @@ Pulse is a real-time IoT telemetry dashboard (ESP32 sensors streaming over WebSo
 - Zod: runtime validation
 - Vitest + Testing Library (unit/component), Playwright (e2e)
 
-Do not add libraries outside this stack without recording an ADR first.
+Pre-approved additions to the stack (no ADR needed):
+
+- Radix UI primitives
+- class-variance-authority
+- uPlot
+- TanStack Table and TanStack Virtual
+- idb-keyval
+- vite-plugin-pwa
+- react-i18next
+- react-router
+- DOMPurify (only if rich text is ever needed)
+- MSW
+- Storybook
+- jest-axe
+- size-limit
+
+Anything else requires recording an ADR first.
 
 ## Architecture
 
