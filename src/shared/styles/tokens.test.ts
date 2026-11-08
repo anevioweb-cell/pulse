@@ -74,3 +74,21 @@ describe.each(Object.entries(themes))('%s theme contrast', (theme, tokens) => {
     }
   });
 });
+
+describe('reduced motion', () => {
+  const MAX_REDUCED_DURATION_MS = 0.01;
+  const reduced = parseBlock(tokensCss, '@media (prefers-reduced-motion: reduce)');
+  const durationTokens = [...lightRoles.keys()].filter((name) =>
+    name.startsWith('--transition-duration-'),
+  );
+
+  it('defines motion duration tokens', () => {
+    expect(durationTokens.length).toBeGreaterThan(0);
+  });
+
+  it.each(durationTokens)('collapses %s to near zero', (name) => {
+    const value = reduced.get(name);
+    expect(value).toMatch(/^\d*\.?\d+ms$/);
+    expect(Number.parseFloat(value ?? '')).toBeLessThanOrEqual(MAX_REDUCED_DURATION_MS);
+  });
+});

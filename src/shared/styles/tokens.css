@@ -238,6 +238,17 @@
   color-scheme: dark;
 }
 
+/* Reduced motion: collapse every duration token to near zero. Not exactly 0, so transitionend and
+   animationend events still fire for code that waits on them. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-duration-instant: 0.01ms;
+    --transition-duration-fast: 0.01ms;
+    --transition-duration-normal: 0.01ms;
+    --transition-duration-slow: 0.01ms;
+  }
+}
+
 /* Numeric values (telemetry readings, counters, timestamps): monospace, fixed-width digits, and a
    slashed zero so values do not jitter as they update and 0/O are unambiguous. */
 @utility numeric {
