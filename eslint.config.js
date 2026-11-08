@@ -13,6 +13,17 @@ import { configs as tseslint } from 'typescript-eslint';
 const TS_FILES = ['**/*.{ts,tsx}'];
 const TEST_FILES = ['**/*.test.{ts,tsx}', 'src/test/**'];
 
+// Physical-direction Tailwind utilities (RTL support, see CLAUDE.md). Matches whole class tokens,
+// with optional variants (`md:`, `hover:`), `!` and negative prefixes, in any string literal.
+const PHYSICAL_UTILITY = [
+  String.raw`(?:m[lr]|p[lr]|left|right|scroll-[mp][lr])-\S+`,
+  String.raw`(?:border-[lr]|rounded-(?:[lr]|[tb][lr]))(?:-\S+)?`,
+  String.raw`(?:text|float|clear)-(?:left|right)`,
+].join('|');
+const PHYSICAL_UTILITY_RE = String.raw`/(?:^|\s)(?:[\w-]+:)*!?-?(?:${PHYSICAL_UTILITY})(?=\s|$)/`;
+const PHYSICAL_UTILITY_MESSAGE =
+  'Use logical utilities (ms/me, ps/pe, start/end, text-start/text-end, border-s/e, rounded-s/e) for RTL support (see CLAUDE.md).';
+
 export default defineConfig(
   globalIgnores(['dist', 'coverage', 'storybook-static', 'node_modules']),
 
@@ -82,6 +93,11 @@ export default defineConfig(
           selector: "JSXAttribute[name.name='style']",
           message:
             'Inline styles are banned; use Tailwind classes and design tokens (see CLAUDE.md).',
+        },
+        { selector: `Literal[value=${PHYSICAL_UTILITY_RE}]`, message: PHYSICAL_UTILITY_MESSAGE },
+        {
+          selector: `TemplateElement[value.raw=${PHYSICAL_UTILITY_RE}]`,
+          message: PHYSICAL_UTILITY_MESSAGE,
         },
       ],
       '@typescript-eslint/no-magic-numbers': [

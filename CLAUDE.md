@@ -15,6 +15,10 @@ Pre-approved additions to the stack (no ADR needed):
 
 - Radix UI primitives
 - class-variance-authority
+- clsx
+- tailwind-merge
+- lucide-react
+- `@fontsource-variable/*` font packages
 - uPlot
 - TanStack Table and TanStack Virtual
 - idb-keyval
@@ -52,6 +56,7 @@ src/
 - No `any` (including `as any` and implicit any). Use `unknown` and narrow, or Zod-inferred types.
 - No `dangerouslySetInnerHTML`.
 - No inline styles (`style={...}`). Use Tailwind classes and design tokens.
+- Logical properties only, because RTL (Arabic) support is required in Phase 8. Use `ms-`/`me-`, `ps-`/`pe-`, `start-`/`end-`, `text-start`/`text-end`, `border-s`/`border-e`, `rounded-s`/`rounded-e`. Never use `ml-`/`mr-`, `pl-`/`pr-`, `left-`/`right-`, `text-left`/`text-right`, `border-l`/`border-r`, `rounded-l`/`rounded-r`, or physical properties in CSS (`margin-left`, `left`, and so on). ESLint flags physical Tailwind utilities in string literals.
 - No magic numbers or strings. Use named constants or design tokens (thresholds, intervals, retry limits, breakpoints, colors, etc.).
 - Derive types from Zod schemas (`z.infer`) rather than duplicating them.
 
