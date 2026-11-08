@@ -15,6 +15,8 @@
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prepare": "husky"
   },
   "dependencies": {
@@ -26,6 +28,9 @@
     "@commitlint/config-conventional": "^21.2.4",
     "@eslint/js": "^9.39.5",
     "@tailwindcss/vite": "^4.3.5",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
     "@types/node": "^24.19.2",
     "@types/react": "^18.3.28",
     "@types/react-dom": "^18.3.7",
@@ -40,11 +45,13 @@
     "eslint-plugin-security": "^4.2.1",
     "globals": "^17.14.0",
     "husky": "^9.1.7",
+    "jsdom": "^31.0.0",
     "lint-staged": "^17.6.0",
     "prettier": "^3.9.10",
     "tailwindcss": "^4.3.5",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.72.1",
-    "vite": "^8.3.6"
+    "vite": "^8.3.6",
+    "vitest": "^5.1.0"
   }
 }
