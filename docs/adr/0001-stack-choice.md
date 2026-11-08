@@ -1,6 +1,6 @@
 # 0001. Stack choice: Vite SPA, Zustand for live data, TanStack Query for server state, Zod at boundaries
 
-- **Status:** Accepted
+- **Status:** Accepted. React version amended by [0003](0003-upgrade-to-react-19.md).
 - **Date:** 2026-11-08
 
 ## Context
@@ -19,7 +19,7 @@ Constraints and forces:
 
 ## Decision
 
-1. **Build tool and framework: Vite + React 18 + TypeScript (strict), as a client-rendered single-page app.** No server rendering framework.
+1. **Build tool and framework: Vite + React 19 (originally 18; see ADR 0003) + TypeScript (strict), as a client-rendered single-page app.** No server rendering framework.
 2. **Live data: Zustand.** WebSocket messages are validated and written into Zustand stores (later backed by fixed-size ring buffers, Phase 3). Components subscribe through narrow selectors so a new reading re-renders only the widgets that depend on it. Stores are also usable outside React (WebSocket handlers, Web Workers' message handlers) through `getState`/`setState`.
 3. **Server state: TanStack Query.** All REST data goes through query hooks, which provide caching, request deduplication, stale-while-revalidate, retries, and invalidation. Live data is not forced into the query cache, and server data is not copied into Zustand.
 4. **Runtime validation: Zod at every external boundary.** WebSocket frames, REST responses, `localStorage`/IndexedDB reads, and URL params are parsed with Zod schemas before they enter the app. Static types are derived with `z.infer`, so the schema is the single source of truth.

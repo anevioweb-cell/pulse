@@ -1,6 +1,6 @@
 # 0002. Tooling versions and import-boundary enforcement
 
-- **Status:** Accepted
+- **Status:** Accepted. The React version pin is superseded by [0003](0003-upgrade-to-react-19.md).
 - **Date:** 2026-11-08
 
 ## Context
@@ -12,7 +12,7 @@ Phase 1 sets up the toolchain. Two decisions are non-obvious:
 
 ## Decision
 
-- Pin **TypeScript `~6.0`** and **ESLint `^9`** so that type-aware linting (`strictTypeChecked`) and every requested plugin run on supported peer versions. Keep **React 18** per CLAUDE.md. Other tools use their current stable majors (Vite 8, Vitest 5, Tailwind CSS 4).
+- Pin **TypeScript `~6.0`** and **ESLint `^9`** so that type-aware linting (`strictTypeChecked`) and every requested plugin run on supported peer versions. Keep **React 18** per CLAUDE.md (since upgraded to React 19, see ADR 0003). Other tools use their current stable majors (Vite 8, Vitest 5, Tailwind CSS 4).
 - Enforce import boundaries with **`eslint-plugin-boundaries`** (`boundaries/dependencies`, default `disallow`). Elements are `app` (`src/app`), `feature` (`src/features/*`, capturing the feature name), and `shared` (`src/shared`). The policies are:
   - `app` → `app`, `shared`, or a feature's `index.ts`
   - `feature` → `shared`, the same feature, or another feature's `index.ts`

@@ -4,7 +4,7 @@ Pulse is a real-time IoT telemetry dashboard (ESP32 sensors streaming over WebSo
 
 ## Stack
 
-- React 18 + TypeScript (`strict: true`) + Vite
+- React 19 + TypeScript (`strict: true`) + Vite
 - Tailwind CSS
 - Zustand: client and live (streaming) state
 - TanStack Query: server state
