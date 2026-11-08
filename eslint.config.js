@@ -59,6 +59,17 @@ export default defineConfig(
       ],
       'import-x/no-default-export': 'off',
       '@typescript-eslint/consistent-type-imports': 'error',
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'zod',
+              message: "Import from 'zod/mini' (tree-shakable, ~13 kB gzip smaller; see ADR 0006).",
+            },
+          ],
+        },
+      ],
     },
   },
 

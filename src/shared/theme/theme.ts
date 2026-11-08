@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/mini';
 
 // Keep in sync with public/theme-init.js (guarded by theme-init.test.ts).
 export const THEME_STORAGE_KEY = 'pulse.theme';
