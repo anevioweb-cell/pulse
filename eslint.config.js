@@ -173,5 +173,14 @@ export default defineConfig(
     extends: [tseslint.disableTypeChecked],
   },
 
+  // Classic (non-module) scripts served as-is from public/, e.g. the no-flash theme script.
+  {
+    files: ['public/**/*.js'],
+    languageOptions: {
+      sourceType: 'script',
+      globals: globals.browser,
+    },
+  },
+
   eslintConfigPrettier,
 );
