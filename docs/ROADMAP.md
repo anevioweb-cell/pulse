@@ -8,6 +8,7 @@
 - [ ] Phase 5: Dashboard features (charts, devices table, alerts, settings)
 - [ ] Phase 6: Performance
 - [ ] Phase 7: Security (threat model, CSP, XSS hardening)
+  - Note: CI must run `npm audit --omit=dev` (production dependencies only). The current 8 moderate findings come from a dev-only `minimatch` advisory inside `typescript-eslint` (see [ADR 0002](adr/0002-tooling-versions-and-import-boundaries.md)).
 - [ ] Phase 8: Accessibility and i18n (EN/FR/AR with RTL)
 - [ ] Phase 9: Testing
 - [ ] Phase 10: CI/CD and deployment
