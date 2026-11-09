@@ -1,1 +1,16 @@
-export {};
+// Public API of the shared UI library. Import components only from '@/shared/ui'.
+export * from './Badge';
+export * from './Button';
+export * from './Card';
+export * from './Dialog';
+export * from './EmptyState';
+export * from './ErrorState';
+export * from './IconButton';
+export * from './Input';
+export * from './Select';
+export * from './Skeleton';
+export * from './Spinner';
+export * from './Switch';
+export * from './Tabs';
+export * from './Toast';
+export * from './Tooltip';
