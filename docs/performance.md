@@ -130,3 +130,31 @@ Own costs do not add up, because components share infrastructure (`@floating-ui`
 - **`tailwind-merge` (~9 kB base):** use `twJoin`/`clsx` where conflicts are impossible, or a reduced `createTailwindMerge` config. cva variants already avoid most conflicts.
 - **CSS:** about 1.8 kB gzip of component classes ship before the app uses those components. Acceptable now; recheck with route-level code splitting (CSS per route).
 - Add `size-limit` budgets for the app entry and per-route chunks (Phase 6).
+
+## Telemetry parser throughput (Phase 3A)
+
+**Method:**
+
+- **Runner:** a throwaway script (not committed), run with `tsx` on Node 24.21.0 (V8), on an AMD Ryzen 5 8500G (single thread).
+- **Valid input:** 12,138 frames from `SimulationEngine` (seed 1, 50 devices at 5 Hz for 60 s: 70 announcements and 12,068 readings), 170 bytes on average.
+- **Hostile input:** five frames: a `NaN` literal, a `__proto__` key, an unknown version, an out-of-range reading, and an oversized frame.
+- **Procedure:** each input set is cycled through `parseTelemetryMessage` 100,000 times per run, for 5 runs after a 2,000-call warm-up. The table reports the median, minimum and maximum of the 5 runs.
+
+| Input                 | Median        | Min     | Max     |
+| --------------------- | ------------- | ------- | ------- |
+| Valid (simulator mix) | 178,587 msg/s | 175,198 | 181,693 |
+| Hostile mix           | 280,637 msg/s | 268,466 | 286,402 |
+
+- **Per message:** about **5.6 µs per valid message**, end to end (size check, `JSON.parse` with the forbidden-key reviver, envelope checks, zod/mini strict schema, string sanitization).
+- **Hostile frames are faster:** they fail at the cheapest check (the oversized frame never reaches `JSON.parse`).
+- **Headroom:** the transport's rate limit (200 msg/s) uses about 0.1 % of one core at this speed. Browser engines and slower phones will be slower; Phase 6 re-measures in the browser under load.
+
+**Production app bundle:** JS unchanged; CSS +1 utility class.
+
+| Asset | End of Phase 2          | After Phase 3A          | Delta (gzip) |
+| ----- | ----------------------- | ----------------------- | ------------ |
+| JS    | 229.82 kB / 72.18 kB gz | 229.82 kB / 72.18 kB gz | 0            |
+| CSS   | 30.59 kB / 7.01 kB gz   | 31.07 kB / 7.06 kB gz   | +0.05 kB     |
+
+- **JS:** nothing in the app imports `src/features/telemetry` yet, so none of the feature's code, the simulator worker or the server is in `dist/`. The JS is byte-for-byte the same size.
+- **CSS:** Tailwind scans source _text_, not imports. The word `transition` in `transport/state-machine.ts` (comments and an error message) matches the `transition` utility, so `.transition` was generated (diffed against the previous build's class list; it is the only new class). It is harmless and the UI will use it anyway. Excluding non-UI folders from Tailwind's sources is not worth the fragility.
