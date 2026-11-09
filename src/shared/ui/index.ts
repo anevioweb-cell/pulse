@@ -1,5 +1,6 @@
 // Public API of the shared UI library. Import components only from '@/shared/ui'.
 export * from './Badge';
+export * from './Banner';
 export * from './Button';
 export * from './Card';
 export * from './Dialog';
@@ -10,6 +11,7 @@ export * from './Input';
 export * from './Select';
 export * from './Skeleton';
 export * from './Spinner';
+export * from './StatusIndicator';
 export * from './Switch';
 export * from './Tabs';
 export * from './Toast';
