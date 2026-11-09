@@ -73,3 +73,89 @@ Everything received over a WebSocket (and from the simulator worker, which goes 
 - **Device authentication:** any client that can reach the server can claim any device id.
 - **Replay protection** (old `ts`/`seq` values are accepted).
 - **Per-device rate limits** on the dashboard side. These are threat-model items for Phase 7, and server-side work for Phase 10.
+
+## REST input
+
+The mock server's REST API (`server/rest/`) treats every request as hostile, and both API clients validate what comes back. Limits are in `MOCK_SERVER` and `API` (`src/features/telemetry/config.ts`) and `HTTP` (`src/shared/api/config.ts`). The checks below run in this order on every request (`server/rest/router.ts`):
+
+1. **URL length:** URLs over 2048 characters get `414 uri_too_long` before anything is parsed.
+2. **CORS allowlist:** a request whose `Origin` is not on the allowlist gets `403 forbidden_origin` before routing, so it cannot even probe which paths exist (no 404s). Details:
+   - Origins are matched exactly: no wildcards, no patterns, no suffix matching. The default list is `http://localhost:5173` and `http://127.0.0.1:5173`. `--origin` adds more, and the CLI accepts only bare `http(s)://host[:port]` origins.
+   - An allowed origin is echoed in `Access-Control-Allow-Origin`, with `Vary: Origin`. Credentials are never allowed (no `Access-Control-Allow-Credentials`).
+   - Preflights allow `GET, POST, PUT, DELETE` and only the `Content-Type` header, cached for 600 s.
+   - Requests without `Origin` (curl, devices, Node tools, same-origin GETs) are allowed: browsers always send `Origin` on cross-origin requests, so a missing `Origin` cannot be a cross-site browser request.
+3. **Rate limit:** 50 requests per second per client address, in a fixed one-second window. Excess requests get `429 rate_limited` with `Retry-After`. At most 1024 client windows are tracked, and the oldest are evicted, so spoofing many addresses cannot grow memory. Note that the limiter keys on the socket address: behind a proxy, every client would share one window.
+4. **Path:** segments are percent-decoded, and malformed encoding is a `400`. An unknown path is `404 not_found`, and a known path with the wrong method is `405` with an `Allow` header. Ids are validated with the contract schemas (`[A-Za-z0-9._:-]{1,64}`, no `__proto__`, `constructor` or `prototype`), so `..%2F..%2Fetc%2Fpasswd` is a 400, not a lookup.
+5. **Query string:** parsed into a null-prototype record. A repeated parameter (parameter pollution) is a 400. Endpoints without parameters reject any query string, and the others use strict schemas (unknown parameters are errors):
+   - readings: `from` and `to` are integer timestamps with `to > from` and a range of at most 7 days; `metric` is one of the five metrics; `maxPoints` is 2 to 2000 (default 500);
+   - alerts: a range of at most 24 h, and `limit` is 1 to 500 (default 100).
+6. **Body** (POST and PUT on alert rules):
+   - `Content-Type` must be `application/json`, otherwise `415`.
+   - A declared `Content-Length` over 2048 bytes gets `413` without reading the body. A streamed body is counted and cut off at the same limit (`413`, `Connection: close`).
+   - JSON is parsed with the prototype-safe parser, so `__proto__`, `constructor` and `prototype` keys are rejected at any depth.
+   - The rule schema is strict: an `id` in the body is an error, because ids are server-generated UUIDs. Names are capped at 64 characters and stripped of control and bidi characters. The threshold must be inside the metric's sensor range. At most 50 rules exist (`409 limit_reached`).
+7. **Fault injection:** a test-only switch, **off by default**. It is enabled only by `--faults` or `PULSE_FAULTS` (for example `latency=300,failure=0.25,status=503`). The spec is parsed strictly: unknown or repeated keys, latency over 30 s, a failure rate outside 0 to 1, or a status outside 500 to 503 stop the server from starting. When it is on, the server logs `REST fault injection ENABLED` at startup, and injected failures carry the code `injected_fault`, so they can never pass for real errors. A test checks that it is off by default.
+
+**Error envelope.** Every failure is `{"error": {"code", "message", "issues"?}}`, with a code from a closed list (`errorCodeSchema` in `contract.ts`) and a fixed message.
+
+- **Issues:** at most 10 `{path, code}` pairs, built from schema paths and Zod issue codes. Rejected values are never echoed.
+- **Exception:** the name of a repeated query parameter is echoed as the issue's `path`. It is length-capped by the URL limit, JSON-encoded, and served as `application/json` with `nosniff`, so it cannot become markup. The UI must still render it as text.
+- **Internal errors:** a `500` with a generic message. The detail is logged on the server only.
+
+**Security headers.** Every response carries:
+
+- `Content-Type: application/json; charset=utf-8`
+- `X-Content-Type-Options: nosniff`
+- `Cache-Control: no-store`
+- `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`
+- `Referrer-Policy: no-referrer`
+
+**WebSocket Origin check.** Browsers do not apply CORS to WebSocket upgrades, so the server checks `Origin` itself, against the same allowlist (cross-site WebSocket hijacking). An upgrade with a disallowed `Origin` is refused by `ws` with `401 Unauthorized`. Upgrades without `Origin` are allowed, because those clients (devices, the probe CLI) are not browsers. An allowed and a disallowed `Origin` are tested in `rest-api.test.ts`, and the other server tests connect without one. The curl smoke test in [performance.md](performance.md#smoke-test-against-the-running-server) shows them.
+
+**Client side.** `HttpTelemetryApi` validates the following before a request leaves (`validation`/`invalid_request`, no request sent):
+
+- ids, query parameters and bodies, with the same contract schemas the server uses;
+- path segments, which are also percent-encoded.
+
+The fetch wrapper (`createHttpClient`) then treats the response as untrusted:
+
+- it has a 10 s timeout;
+- it refuses bodies over 512 KiB, whether declared or streamed;
+- it requires `application/json`;
+- it parses JSON without prototype keys and validates the result against the contract schema;
+- it cuts error messages to 200 characters and keeps at most 10 issues.
+
+`DemoTelemetryApi` runs the same input checks and validates its own output against the same schemas. The shared contract suite (`server/telemetry-api-contract.test.ts`) proves that both implementations fail the same way.
+
+**Not covered yet:**
+
+- **Authentication and authorization:** the mock server is a loopback dev tool. Phase 10 decides authentication for a real backend.
+- **CSRF:** requests without `Origin` are allowed, and the API uses no cookies, so there is no ambient credential to abuse. This must be revisited if a real backend adds cookie sessions.
+
+## Persisted data is untrusted
+
+The IndexedDB query cache (`src/shared/api/persistence.ts`, ADR 0017) is read back as untrusted input, like a network response. Anything with access to the origin can write it: another tab running an older build, a browser extension, devtools, a corrupted profile. Restore, in order:
+
+1. **Type and size:** the stored value must be a string. Anything over 1 MiB (checked as characters, then as UTF-8 bytes) is discarded before parsing.
+2. **Parsing:** the prototype-safe JSON parser rejects `__proto__`, `constructor` and `prototype` keys at any depth.
+3. **Migration:** only versions with a known migration path are upgraded (v1 to v2 today). Each migration validates its own input, and unknown versions are discarded.
+4. **Record schema:** a strict v2 record schema. The record's buster must match the build's (`API.PERSISTED_CACHE_BUSTER`), so data written for another response shape is never validated against the wrong schema.
+5. **Per entry:**
+   - the key must be JSON-safe (strings, numbers, null, flat records);
+   - the persist policy accepts only three resources (device list, readings, alert rules), and only for the current mode;
+   - each entry's data is validated with the same strict, length-capped contract schemas used for network responses;
+   - entries older than 24 h or dated in the future are skipped, and at most 50 entries are read.
+6. **Failures:** an invalid record is deleted, and an invalid entry is skipped while the rest are restored. Restore never throws. A read or write that takes more than 2 s, or fails (quota, blocked database), switches the session to memory-only, silently.
+
+What is stored:
+
+- **Never stored:** live readings, device detail and alert history.
+- **Nothing secret:** these resources contain no secrets, and none may be added to the persist policy.
+- **Per-mode records:** demo and live data are kept in separate records (`telemetry.demo` and `telemetry.live`). The mode is also checked per key, so demo data can never be restored into Live Mode.
+
+**Limitation:** validation proves the data is well-formed, not that it is genuine. There is no signature, because a key in the same origin would not stop anyone who can already write its IndexedDB. Well-formed forged data would be shown until it is refetched:
+
+- the device list and alert rules are refetched as soon as they are stale (60 s and 5 min after the forged `updatedAt`);
+- a past readings range is fresh forever, so a forged one would be shown until it is garbage-collected or the 24 h restore window passes.
+
+An attacker who can write the origin's storage can usually run script in it as well, which is the bigger problem (Phase 7, CSP).
