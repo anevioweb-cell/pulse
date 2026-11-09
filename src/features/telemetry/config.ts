@@ -208,6 +208,26 @@ export const API = {
 } as const;
 
 /**
+ * Demo Mode alert rules in IndexedDB (ADR 0018). Demo Mode has no server, so its rules must
+ * survive a reload in the browser itself; otherwise the persisted query cache would show rules
+ * the DemoTelemetryApi no longer has.
+ */
+export const DEMO_RULES = {
+  /** Own database: idb-keyval cannot add an object store to the query cache's database. */
+  DATABASE: 'pulse-demo',
+  STORE: 'alert-rules',
+  STORAGE_KEY: 'pulse.demo.alert-rules',
+  /** Stored format version; unknown versions are discarded (defaults are used instead). */
+  SCHEMA_VERSION: 1,
+  /**
+   * A full record is 50 rules of at most ~450 B each (64-char name up to 4 UTF-8 bytes per
+   * character, a 64-char id, five short fields) = ~22.5 KB; 32 KiB leaves headroom and refuses
+   * anything bigger before parsing.
+   */
+  MAX_BYTES: 32 * 1024,
+} as const;
+
+/**
  * TanStack Query freshness per resource (docs/caching.md and ADR 0016 explain each choice).
  * staleTime: how long data is served without refetching. gcTime: how long unused data stays in
  * memory (and is eligible for persistence) after the last component stops using it.

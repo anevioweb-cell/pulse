@@ -1,4 +1,5 @@
 import { ApiError } from '@/shared/api';
+import type { KeyValueStorage } from '@/shared/api';
 
 import { deviceIdSchema } from '../model/device';
 import { HistoryModel } from '../simulator/history-model';
@@ -15,6 +16,7 @@ import {
   readingsQuerySchema,
   ruleIdSchema,
 } from './contract';
+import { DemoRuleStorage } from './demo-rule-storage';
 import { demoErrors, invalidRequest, throwIfAborted } from './errors';
 import { SimulatedTelemetryData } from './simulated-data';
 
@@ -28,6 +30,11 @@ export interface DemoTelemetryApiOptions {
   deviceCount?: number;
   now?: () => number;
   generateId?: () => string;
+  /**
+   * Where alert rules persist (ADR 0018). Defaults to IndexedDB; null keeps them in memory for
+   * the session (also the fallback where IndexedDB is missing, as in Node and jsdom).
+   */
+  ruleStorage?: KeyValueStorage | null;
 }
 
 /** Input check, identical to HttpTelemetryApi's client-side check (same schemas, same error). */
@@ -50,22 +57,27 @@ function contract<Output>(schema: z.ZodMiniType<Output>, value: unknown): Output
 
 /**
  * Demo Mode repository: no backend, no network, no service worker. Device lists, history and
- * alerts are derived from the deterministic HistoryModel (same seed, same data, for any range);
- * alert rules live in memory for the session (persisted in Phase 4B). Behaves like the HTTP API:
- * async, cancellable, same validation, same error codes.
+ * alerts are derived from the deterministic HistoryModel (same seed, same data, for any range).
+ * Alert rules persist in IndexedDB, and this class is their source of truth in Demo Mode: they
+ * are loaded before the first call and written through on every change (ADR 0018). Behaves like
+ * the HTTP API: async, cancellable, same validation, same error codes.
  */
 export class DemoTelemetryApi implements TelemetryApi {
   readonly mode = 'demo' as const;
   private readonly data: SimulatedTelemetryData;
   private readonly rules: AlertRuleStore;
+  private readonly ruleStorage: DemoRuleStorage;
+  private rulesLoaded: Promise<void> | null = null;
 
   constructor({
     seed,
     deviceCount,
     now = () => Date.now(),
     generateId,
+    ruleStorage,
   }: DemoTelemetryApiOptions = {}) {
     this.rules = new AlertRuleStore(generateId ? { generateId } : {});
+    this.ruleStorage = new DemoRuleStorage(ruleStorage);
     this.data = new SimulatedTelemetryData({
       model: new HistoryModel({
         ...(seed === undefined ? {} : { seed }),
@@ -112,6 +124,7 @@ export class DemoTelemetryApi implements TelemetryApi {
     await this.tick(signal);
     const result = this.rules.create(parse(alertRuleInputSchema, input));
     if (!result.ok) throw demoErrors.limitReached();
+    await this.ruleStorage.save(this.rules.list());
     return contract(alertRuleSchema, result.rule);
   }
 
@@ -119,18 +132,30 @@ export class DemoTelemetryApi implements TelemetryApi {
     await this.tick(signal);
     const result = this.rules.update(parse(ruleIdSchema, id), parse(alertRuleInputSchema, input));
     if (!result.ok) throw demoErrors.notFound('Alert rule');
+    await this.ruleStorage.save(this.rules.list());
     return contract(alertRuleSchema, result.rule);
   }
 
   async deleteAlertRule(id: string, { signal }: CallOptions = {}) {
     await this.tick(signal);
     if (!this.rules.delete(parse(ruleIdSchema, id))) throw demoErrors.notFound('Alert rule');
+    await this.ruleStorage.save(this.rules.list());
   }
 
-  /** Yields once (like a real request) and honours cancellation before doing any work. */
+  /**
+   * Yields (like a real request), loads persisted rules once, and honours cancellation before
+   * doing any work.
+   */
   private async tick(signal: AbortSignal | undefined): Promise<void> {
     throwIfAborted(signal);
-    await Promise.resolve();
+    this.rulesLoaded ??= this.loadRules();
+    await this.rulesLoaded;
     throwIfAborted(signal);
+  }
+
+  /** Persisted rules replace the defaults; nothing stored (or invalid) keeps the defaults. */
+  private async loadRules(): Promise<void> {
+    const loaded = await this.ruleStorage.load();
+    if (loaded.status === 'loaded') this.rules.replaceAll(loaded.rules);
   }
 }

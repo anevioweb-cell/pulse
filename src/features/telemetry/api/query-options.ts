@@ -53,10 +53,16 @@ export const alertHistoryQuery = (api: TelemetryApi, query: AlertsQueryInput) =>
     gcTime: QUERY_POLICY.ALERTS.GC_TIME_MS,
   });
 
+/**
+ * Rules are always revalidated when a component mounts, even if fresh: a restored (persisted)
+ * list is shown at once, but the repository decides (ADR 0018). staleTime still limits refetches
+ * while components stay mounted.
+ */
 export const alertRulesQuery = (api: TelemetryApi) =>
   queryOptions({
     queryKey: telemetryKeys.alertRules(api.mode),
     queryFn: ({ signal }) => api.listAlertRules({ signal }),
     staleTime: QUERY_POLICY.ALERT_RULES.STALE_TIME_MS,
     gcTime: QUERY_POLICY.ALERT_RULES.GC_TIME_MS,
+    refetchOnMount: 'always',
   });

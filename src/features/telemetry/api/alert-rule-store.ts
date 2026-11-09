@@ -28,7 +28,8 @@ export type RuleWriteResult =
 const copy = (rule: AlertRule): AlertRule => ({ ...rule });
 
 /**
- * In-memory alert rules (mock server and Demo Mode; persistence of demo rules is Phase 4B).
+ * In-memory alert rules (mock server and Demo Mode; Demo Mode persists them through
+ * DemoRuleStorage, ADR 0018).
  * Keyed by id in a Map; ids come from `generateId` (UUIDs by default), never from clients on
  * create. Returns copies so callers cannot mutate stored rules.
  */
@@ -69,5 +70,11 @@ export class AlertRuleStore {
 
   delete(id: string): boolean {
     return this.rules.delete(id);
+  }
+
+  /** Replaces every rule, keeping their ids (restoring validated rules from storage). */
+  replaceAll(rules: readonly AlertRule[]): void {
+    this.rules.clear();
+    for (const rule of rules.slice(0, API.MAX_ALERT_RULES)) this.rules.set(rule.id, copy(rule));
   }
 }
