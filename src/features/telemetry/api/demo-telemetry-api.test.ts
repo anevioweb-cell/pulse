@@ -121,20 +121,33 @@ describe('DemoTelemetryApi', () => {
     ['too many points', { from: NOW - HOUR, to: NOW, maxPoints: API.MAX_POINTS + 1 }],
     ['too few points', { from: NOW - HOUR, to: NOW, maxPoints: 1 }],
     ['fractional timestamp', { from: NOW - HOUR + 0.5, to: NOW }],
-  ])('rejects an invalid readings query (%s) with 400 like the server', async (_name, range) => {
-    const error = await failureOf(
-      api().getReadings({ deviceId: 'esp32-01', metric: 'temperature', ...range }),
-    );
-    expect(error).toMatchObject({ kind: 'http', status: 400, code: 'bad_request' });
-  });
+  ])(
+    'rejects an invalid readings query (%s) client-side, like HttpTelemetryApi',
+    async (_name, range) => {
+      const error = await failureOf(
+        api().getReadings({ deviceId: 'esp32-01', metric: 'temperature', ...range }),
+      );
+      expect(error).toMatchObject({
+        kind: 'validation',
+        status: undefined,
+        code: 'invalid_request',
+      });
+    },
+  );
 
-  it('answers 404 for unknown devices and 400 for malformed ids', async () => {
+  it('answers 404 for unknown devices and rejects malformed ids client-side', async () => {
     expect(await failureOf(api().getDevice('esp32-99'))).toMatchObject({
       status: 404,
       code: 'not_found',
     });
-    expect(await failureOf(api().getDevice('../etc/passwd'))).toMatchObject({ status: 400 });
-    expect(await failureOf(api().getDevice('__proto__'))).toMatchObject({ status: 400 });
+    expect(await failureOf(api().getDevice('../etc/passwd'))).toMatchObject({
+      kind: 'validation',
+      code: 'invalid_request',
+    });
+    expect(await failureOf(api().getDevice('__proto__'))).toMatchObject({
+      kind: 'validation',
+      code: 'invalid_request',
+    });
   });
 
   it('honours AbortSignal', async () => {
@@ -191,7 +204,8 @@ describe('DemoTelemetryApi', () => {
       status: 404,
     });
     expect(await failureOf(demo.createAlertRule({ ...input, threshold: 1000 }))).toMatchObject({
-      status: 400,
+      kind: 'validation',
+      code: 'invalid_request',
     });
 
     for (let index = initial.length; index < API.MAX_ALERT_RULES; index += 1) {
@@ -204,7 +218,7 @@ describe('DemoTelemetryApi', () => {
     // Extra keys (such as an id in the body) are rejected, not silently dropped.
     expect(
       await failureOf(demo.updateAlertRule(created.id, { ...input, id: 'x' } as typeof input)),
-    ).toMatchObject({ status: 400 });
+    ).toMatchObject({ kind: 'validation', code: 'invalid_request' });
   });
 
   it('returns copies: mutating a result does not change stored rules', async () => {

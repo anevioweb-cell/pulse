@@ -15,7 +15,7 @@ import {
   readingsQuerySchema,
   ruleIdSchema,
 } from './contract';
-import { demoErrors, throwIfAborted } from './errors';
+import { demoErrors, invalidRequest, throwIfAborted } from './errors';
 import { SimulatedTelemetryData } from './simulated-data';
 
 import type { AlertRuleInput, AlertsQueryInput } from './contract';
@@ -30,9 +30,10 @@ export interface DemoTelemetryApiOptions {
   generateId?: () => string;
 }
 
+/** Input check, identical to HttpTelemetryApi's client-side check (same schemas, same error). */
 function parse<Output>(schema: z.ZodMiniType<Output>, value: unknown): Output {
   const result = schema.safeParse(value);
-  if (!result.success) throw demoErrors.badRequest(result.error);
+  if (!result.success) throw invalidRequest(result.error);
   return result.data;
 }
 
