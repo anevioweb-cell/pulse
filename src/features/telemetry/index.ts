@@ -79,12 +79,13 @@ export {
   useLiveDevice,
   useLiveDeviceIds,
   useLiveMode,
+  useLiveLastMessageAt,
   useLiveSeriesVersion,
   useLiveStatusSummary,
 } from './live';
 
 // Server-state data access (Phase 4A): REST contract, repository interface and implementations.
-export { API, QUERY_POLICY } from './config';
+export { API, CONNECTIVITY, PREFETCH, QUERY_POLICY } from './config';
 export * from './api/contract';
 export type { CallOptions, ReadingsRequest, TelemetryApi } from './api/telemetry-api';
 export { HttpTelemetryApi } from './api/http-telemetry-api';
@@ -135,3 +136,28 @@ export type {
 } from './api/rule-mutations';
 export { setupTelemetryPersistence, telemetryPersistPolicy } from './api/persistence';
 export type { TelemetryPersistenceOptions } from './api/persistence';
+
+// Prefetching and connectivity (Phase 4B).
+export {
+  createPrefetchIntent,
+  prefetchDevice,
+  recentReadingsQuery,
+  recentReadingsRequest,
+  usePrefetchDevice,
+} from './api/prefetch';
+export type { PrefetchIntent } from './api/prefetch';
+export {
+  browserConnectivity,
+  ConnectivityMonitor,
+  deriveConnectivity,
+} from './connectivity/connectivity';
+export type {
+  BrowserConnectivitySource,
+  Connectivity,
+  ConnectivityMonitorOptions,
+  ConnectivityReason,
+  ConnectivitySignals,
+  ConnectivityState,
+  IntervalHandle,
+} from './connectivity/connectivity';
+export { connectivityMonitor, useConnectivity } from './connectivity/use-connectivity';
