@@ -146,6 +146,21 @@ export const SIMULATOR = {
   RECHARGE_DELAY_MS: 60 * MS_PER_SECOND,
   /** Readings are rounded to this many decimals, like real sensor drivers. */
   VALUE_DECIMALS: 2,
+  /**
+   * Resolution of simulated history (REST readings in Demo Mode and on the mock server): one
+   * sample per 10 s = 8,640 samples per device and metric per day, cheap to compute on demand.
+   */
+  HISTORY_SAMPLE_MS: 10 * MS_PER_SECOND,
+  /** Time scale of the smooth history noise: values wander noticeably over ~5 minutes. */
+  HISTORY_NOISE_KNOT_MS: 5 * SECONDS_PER_MINUTE * MS_PER_SECOND,
+  /** Peak noise added to each metric's baseline in simulated history. */
+  HISTORY_TEMPERATURE_NOISE: 1.5,
+  HISTORY_HUMIDITY_NOISE: 4,
+  HISTORY_PRESSURE_NOISE: 3,
+  HISTORY_SIGNAL_NOISE: 6,
+  /** Simulated battery discharge cycle in history: 100 % down to 5 % over 2 days, then recharge. */
+  HISTORY_BATTERY_CYCLE_MS: 2 * 24 * SECONDS_PER_MINUTE * SECONDS_PER_MINUTE * MS_PER_SECOND,
+  HISTORY_BATTERY_FLOOR: 5,
 } as const;
 
 /* ---------------------------------------------------------------------------------------------- */

@@ -1,4 +1,5 @@
 import { PROTOCOL, SENSOR_RANGES, SIMULATOR } from '../config';
+import { createDeviceProfile } from './device-profile';
 import { deriveSeed, gaussian, mulberry32, TAU, uniform } from './prng';
 
 import type { Tunable } from '../config';
@@ -53,35 +54,12 @@ interface SimulatedDevice {
   spikeNext: boolean;
 }
 
-const ROOMS = [
-  'Living room',
-  'Kitchen',
-  'Bedroom',
-  'Office',
-  'Bathroom',
-  'Garage',
-  'Greenhouse',
-  'Cellar',
-  'Attic',
-  'Hallway',
-  'Nursery',
-  'Workshop',
-] as const;
-const FLOORS = ['Ground floor', 'First floor', 'Outside', 'Basement'] as const;
-const FIRMWARE_VERSIONS = ['1.4.2', '1.4.2', '1.5.0', '1.3.9'] as const;
-const DEVICE_ID_DIGITS = 2;
 const FULL_BATTERY = 100;
 const MS_PER_SECOND = 1000;
 const HALF = 0.5;
 const DECIMAL_BASE = 10;
 
 type Range = Readonly<{ min: number; max: number }>;
-
-const pick = <T>(items: readonly T[], index: number): T => {
-  const item = items[index % items.length];
-  if (item === undefined) throw new Error('pick() on an empty list');
-  return item;
-};
 
 /**
  * Pure, framework-free telemetry generator. Given a seed it is fully deterministic: it has no
@@ -191,29 +169,21 @@ export class SimulationEngine {
   /* ----------------------------------------------- devices ------------------------------------- */
 
   private createDevice(index: number): SimulatedDevice {
-    const random = mulberry32(deriveSeed(this.seed, index));
-    const t = this.tuning;
-    const round = Math.floor(index / ROOMS.length);
-    const room = pick(ROOMS, index);
+    const profile = createDeviceProfile(this.seed, index, this.tuning);
     return {
-      id: `esp32-${String(index + 1).padStart(DEVICE_ID_DIGITS, '0')}`,
-      name: round === 0 ? room : `${room} ${String(round + 1)}`,
-      location: pick(FLOORS, index),
-      firmware: pick(FIRMWARE_VERSIONS, index),
-      random,
-      phase: random(),
-      baseline: {
-        temperature: uniform(random, t.TEMPERATURE_BASELINE.min, t.TEMPERATURE_BASELINE.max),
-        humidity: uniform(random, t.HUMIDITY_BASELINE.min, t.HUMIDITY_BASELINE.max),
-        pressure: uniform(random, t.PRESSURE_BASELINE.min, t.PRESSURE_BASELINE.max),
-        signal: uniform(random, t.SIGNAL_BASELINE.min, t.SIGNAL_BASELINE.max),
-      },
-      drainPerReading: uniform(random, t.BATTERY_DRAIN_MIN, t.BATTERY_DRAIN_MAX),
+      id: profile.id,
+      name: profile.name,
+      location: profile.location,
+      firmware: profile.firmware,
+      random: profile.random,
+      phase: profile.phase,
+      baseline: profile.baseline,
+      drainPerReading: profile.drainPerReading,
       drift: { temperature: 0, humidity: 0, pressure: 0, signal: 0 },
-      battery: uniform(random, t.BATTERY_INITIAL_MIN, t.BATTERY_INITIAL_MAX),
+      battery: profile.initialBattery,
       seq: 0,
       // Spread devices across the first interval so readings do not arrive in bursts.
-      nextDueAt: this.time + random() * this.intervalMs,
+      nextDueAt: this.time + profile.random() * this.intervalMs,
       status: 'online',
       resumeAt: 0,
       spikeNext: false,
