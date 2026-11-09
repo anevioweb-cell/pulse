@@ -1,15 +1,8 @@
 import { z } from 'zod/mini';
 
-/**
- * Keys that must never appear in device-provided JSON, and values that must never be used as
- * device ids. Device data is untrusted: these names can reach object prototypes when data is
- * merged into plain objects. Rejected outright (see docs/security.md).
- */
-export const FORBIDDEN_KEYS: ReadonlySet<string> = new Set([
-  '__proto__',
-  'constructor',
-  'prototype',
-]);
+import { FORBIDDEN_KEYS } from '@/shared/lib/safe-json';
+
+export { FORBIDDEN_KEYS };
 
 // Characters removed from free-text fields before display:
 // - C0 controls, DEL and C1 controls (terminal escapes, NUL, line breaks in log lines);

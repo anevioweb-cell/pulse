@@ -16,6 +16,13 @@
     "moduleDetection": "force",
     "noEmit": true,
 
+    /* Same path aliases as the app (tsconfig.app.json, vite.config.ts); tsx reads them via --tsconfig */
+    "paths": {
+      "@/app/*": ["./src/app/*"],
+      "@/features/*": ["./src/features/*"],
+      "@/shared/*": ["./src/shared/*"]
+    },
+
     /* Type safety (same as the app) */
     "strict": true,
     "noUncheckedIndexedAccess": true,

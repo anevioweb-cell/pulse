@@ -1,6 +1,7 @@
+import { parseJsonSafely } from '@/shared/lib/safe-json';
+
 import { PROTOCOL } from '../config';
 import { MESSAGE_TYPES, telemetryMessageSchema } from './protocol';
-import { FORBIDDEN_KEYS } from './untrusted';
 
 import type { MessageType, TelemetryMessage } from './protocol';
 
@@ -44,13 +45,6 @@ export function exceedsFrameLimit(
   return encoder.encode(text).length > maxBytes;
 }
 
-class ForbiddenKeyError extends Error {}
-
-function rejectForbiddenKeys(key: string, value: unknown): unknown {
-  if (FORBIDDEN_KEYS.has(key)) throw new ForbiddenKeyError(key);
-  return value;
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -70,13 +64,9 @@ export function parseTelemetryMessage(raw: unknown): ParseResult {
   if (typeof raw !== 'string') return failure('unsupported_payload');
   if (exceedsFrameLimit(raw)) return failure('too_large');
 
-  let data: unknown;
-  try {
-    data = JSON.parse(raw, rejectForbiddenKeys);
-  } catch (error) {
-    if (error instanceof ForbiddenKeyError) return failure('forbidden_key', error.message);
-    return failure('invalid_json');
-  }
+  const json = parseJsonSafely(raw);
+  if (!json.ok) return failure(json.reason, json.key);
+  const data = json.value;
 
   if (!isRecord(data)) return failure('not_an_object');
   if (data.v !== PROTOCOL.VERSION) {
