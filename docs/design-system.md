@@ -1,6 +1,6 @@
 # Design system
 
-The Pulse design system is built in two parts: **2A**, foundations (tokens, theming, typography; this document), and **2B**, components and Storybook. Decisions are recorded in [ADR 0004](adr/0004-design-tokens-as-css-variables.md) (tokens) and [ADR 0005](adr/0005-theme-strategy.md) (theming).
+The Pulse design system has two parts: **foundations** (tokens, theming, typography) and **components** (`src/shared/ui`, documented in Storybook). Decisions are recorded in [ADR 0004](adr/0004-design-tokens-as-css-variables.md) (tokens) and [ADR 0005](adr/0005-theme-strategy.md) (theming).
 
 ## Token architecture
 
@@ -87,3 +87,63 @@ Under `prefers-reduced-motion: reduce`, every duration token becomes `0.01ms` (n
 - Use logical utilities only (`ms-`, `pe-`, `start-`, `text-end`, `rounded-s-`). ESLint enforces this for string literals.
 - Merge classes with `cn()` from `@/shared/lib` (clsx + tailwind-merge, configured with the project's z-index, duration, ease and font tokens).
 - A new semantic color role must be added to both themes and to the pair lists in `tokens.test.ts`.
+
+## Components
+
+All components live in `src/shared/ui/<Component>/` and are imported only from `@/shared/ui`. Conventions are in [ADR 0007](adr/0007-component-api-conventions.md), and the choice of Radix in [ADR 0008](adr/0008-radix-as-accessibility-base.md). Run `npm run storybook` to browse every variant and state with the theme, direction and locale toolbar. The **Foundations** docs page there replaces the temporary preview page from Phase 2A.
+
+### Catalog
+
+| Component      | Radix base                               | Variants and sizes                                                                   | Accessibility notes                                                                                                                                                                                                          |
+| -------------- | ---------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Button**     | `Slot` (for `asChild`)                   | `primary`, `secondary`, `ghost`, `danger` · `sm`, `md`, `lg` · `loading`, `disabled` | `type="button"` by default. Loading sets `aria-busy`, disables, and keeps the label as the accessible name. `asChild` renders links with button styles.                                                                      |
+| **IconButton** | via Button                               | Button variants · `sm`, `md`, `lg`                                                   | `label` is required (becomes `aria-label`). While loading, the spinner replaces the icon. Mirror directional icons with `rtl:-scale-x-100`.                                                                                  |
+| **Input**      | none (native `<input>`)                  | `sm`, `md`, `lg` · hint, error, required, hidden label                               | Label required. Hint and error linked with `aria-describedby`. Error sets `aria-invalid` and `data-invalid` and shows an icon plus text. The required asterisk is hidden from assistive tech (native `required` carries it). |
+| **Select**     | `@radix-ui/react-select`                 | `sm`, `md`, `lg` · placeholder, hint, error, disabled options                        | Combobox trigger and listbox. Arrows, Home/End, typeahead, Escape. Rendered in a portal at `z-dropdown`. Checked option shows a check icon.                                                                                  |
+| **Switch**     | `@radix-ui/react-switch`                 | `sm`, `md` · description                                                             | `role="switch"` with `aria-checked`. Space toggles, the label toggles. The thumb translation mirrors in RTL.                                                                                                                 |
+| **Tabs**       | `@radix-ui/react-tabs`                   | `underline`, `pill`                                                                  | Arrow keys (mirrored in RTL through `DirectionProvider`), Home/End, disabled tabs skipped. The active tab is marked by a bar or raised surface, not color alone. Panels are focusable.                                       |
+| **Dialog**     | `@radix-ui/react-dialog`                 | `sm`, `md`, `lg` · optional built-in close button                                    | Focus trap and restore, Escape and outside click close, background hidden with `aria-hidden` and scroll-locked. `DialogTitle` names it and `DialogDescription` describes it.                                                 |
+| **Tooltip**    | `@radix-ui/react-tooltip`                | side, align, delay                                                                   | Opens on hover and keyboard focus, closes on Escape, linked with `aria-describedby`. Supplementary only (not available on touch).                                                                                            |
+| **Badge**      | none                                     | `neutral`, `accent`, `success`, `warning`, `danger`, `info` · `sm`, `md`             | Status variants show a distinct icon shape as well as color. Text sits on a raised surface (contrast token-checked).                                                                                                         |
+| **Card**       | `Slot` (for `asChild`)                   | `raised`, `flat`, `sunken` · padding `none`, `sm`, `md`                              | `CardTitle` heading level is configurable (`as`) to fit the page outline.                                                                                                                                                    |
+| **Skeleton**   | none                                     | `text`, `rect`, `circle`                                                             | `aria-hidden`. The loading region sets `aria-busy` and a hidden label. The shimmer stops under reduced motion.                                                                                                               |
+| **Toast**      | none (own store, `useSyncExternalStore`) | `neutral`, `success`, `warning`, `danger`, `info` · duration                         | Live regions exist before any toast: assertive for danger, polite otherwise. Auto-dismiss pauses on hover and focus. Escape or the button dismisses. At most 4 visible.                                                      |
+| **Spinner**    | none                                     | `sm`, `md`, `lg` · `decorative`                                                      | `role="status"` with a hidden label, or `aria-hidden` when decorative (inside a busy button). Stops rotating under reduced motion.                                                                                           |
+| **EmptyState** | none                                     | `sm`, `md` · icon, action, heading level                                             | A heading plus description, so it is not just an illustration. The icon is decorative.                                                                                                                                       |
+| **ErrorState** | none                                     | `sm`, `md` · retry, retrying, heading level, `announce`                              | `role="alert"` by default (turn off for initial renders). A warning icon plus the title, not color alone. The retry button supports a busy state.                                                                            |
+
+### Checklist for adding a new component
+
+1. **Need.** Check that the catalog does not already cover it (a variant of an existing component is usually better). If it needs a library that isn't pre-approved, write an ADR first.
+2. **Base.**
+   - Interactive patterns with a WAI-ARIA keyboard model (menus, comboboxes, popovers, sliders): use the Radix primitive.
+   - Otherwise use the native element.
+   - Never use `div` with `onClick`.
+3. **Folder.** Create `src/shared/ui/<Component>/` with `Component.tsx`, `Component.test.tsx`, `Component.stories.tsx` and `index.ts`, and export it from `src/shared/ui/index.ts`.
+4. **API (ADR 0007).**
+   - Extend the rendered element's props and spread the rest.
+   - Use `ref` as a regular prop.
+   - Use `cva` for `variant` and `size`, and `cn()` with `className` last.
+   - Use compound parts for structured widgets.
+   - Use `asChild` (Slot) when the styles are useful on another element.
+   - Add TSDoc on the component and on non-obvious props.
+5. **Styling.**
+   - Use semantic token utilities only. Add a new role to `tokens.css` (both themes) and to `tokens.test.ts` if needed.
+   - Use logical properties only, and mirror directional icons and translations in RTL.
+   - No inline styles, no `dangerouslySetInnerHTML`, no magic numbers (name constants such as offsets and delays).
+   - Drive state from `data-*` or ARIA attributes.
+6. **Accessibility.**
+   - Give it an accessible name (make the label prop required where there is no visible text).
+   - Use `focusRing` from `internal/styles` (offset mandatory) on every focusable part.
+   - Disabled and loading states must be visible and exposed to assistive tech.
+   - Never convey status by color alone.
+   - Respect reduced motion: use the duration tokens, and add `motion-reduce:animate-none` on loops.
+7. **Tests.**
+   - Cover behavior with Testing Library: keyboard, pointer, states and callbacks.
+   - Add `expectNoAxeViolations()` for each meaningful state (on `document.body` for portaled content).
+8. **Stories.**
+   - Add one story per variant and state, with controls (`argTypes`) and autodocs.
+   - Check light and dark, and LTR and RTL, in the toolbar.
+   - The a11y panel must show no violations.
+9. **Cost.** If it adds a dependency, measure its gzip cost (method in `docs/performance.md`) and add it to the component cost table. Note any runtime-injected styles in `docs/security.md`.
+10. **Verify.** typecheck, lint, format:check, test, build, build-storybook.
