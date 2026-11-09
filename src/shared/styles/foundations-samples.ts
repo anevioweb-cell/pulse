@@ -1,4 +1,4 @@
-// Temporary data for the Foundations preview (moves to Storybook in Phase 2B).
+// Sample data for the Foundations docs in Storybook (Foundations.stories.tsx).
 // Class names are complete literals so Tailwind's scanner can find them.
 
 export interface Swatch {
@@ -21,12 +21,14 @@ export const CONTENT_SWATCHES: Swatch[] = [
   { token: 'accent', className: 'bg-accent', usage: 'Primary actions, links' },
   { token: 'accent-foreground', className: 'bg-accent-foreground', usage: 'Text on accent' },
   { token: 'focus-ring', className: 'bg-focus-ring', usage: 'Keyboard focus' },
+  { token: 'scrim', className: 'bg-scrim', usage: 'Backdrop behind dialogs' },
 ];
 
 export const STATUS_SWATCHES: Swatch[] = [
   { token: 'success', className: 'bg-success', usage: 'Healthy, online' },
   { token: 'warning', className: 'bg-warning', usage: 'Degraded, threshold near' },
   { token: 'danger', className: 'bg-danger', usage: 'Offline, threshold crossed' },
+  { token: 'danger-foreground', className: 'bg-danger-foreground', usage: 'Text on danger' },
   { token: 'info', className: 'bg-info', usage: 'Neutral notices' },
 ];
 
@@ -76,3 +78,27 @@ export const SHADOW_SAMPLES = [
 ] as const;
 
 export const NUMERIC_SAMPLES = ['23.47 °C', '1013.20 hPa', '00:42:07', '0x3F0A'] as const;
+
+export const MOTION_SAMPLES = [
+  { token: 'duration-instant (50ms)', className: 'duration-instant' },
+  { token: 'duration-fast (120ms)', className: 'duration-fast' },
+  { token: 'duration-normal (200ms)', className: 'duration-normal' },
+  { token: 'duration-slow (320ms)', className: 'duration-slow' },
+] as const;
+
+export const EASING_SAMPLES = [
+  { token: 'ease-standard', className: 'ease-standard' },
+  { token: 'ease-enter', className: 'ease-enter' },
+  { token: 'ease-exit', className: 'ease-exit' },
+] as const;
+
+export const Z_INDEX_SAMPLES = [
+  'base (0)',
+  'raised (10)',
+  'sticky (100)',
+  'dropdown (200)',
+  'overlay (300)',
+  'modal (400)',
+  'toast (500)',
+  'tooltip (600)',
+] as const;

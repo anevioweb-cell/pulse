@@ -1,0 +1,39 @@
+import { Meta, Story } from '@storybook/addon-docs/blocks';
+
+import * as FoundationsStories from './Foundations.stories';
+
+<Meta of={FoundationsStories} name="Foundations" />
+
+# Foundations
+
+Design tokens for Pulse, rendered live from `src/shared/styles/tokens.css`. Use the toolbar to switch **theme** (light, dark), **direction** (LTR, RTL) and **locale** (Latin or Arabic font stack); every section below follows it.
+
+Components use **semantic** tokens only (`bg-surface`, `text-text-muted`, `border-border-strong`). Primitive scales are not exposed as utilities, and Tailwind's default palette is removed, so an off-system color does not compile. See `docs/design-system.md`, ADR 0004 (tokens) and ADR 0005 (theming).
+
+## Colors
+
+Every text role meets **4.5:1** on every surface in both themes, and control borders, focus rings and chart series meet **3:1**. `src/shared/styles/tokens.test.ts` enforces this in CI. The decorative `border` role is exempt; control borders use `border-strong`. Focus outlines always have an offset, because `focus-ring` has low contrast against `accent`.
+
+<Story of={FoundationsStories.Colors} />
+
+## Typography
+
+Inter Variable for UI text, with Vazirmatn Variable for Arabic (selected per character through `unicode-range`, or first in the stack under `lang="ar"`), and JetBrains Mono Variable for telemetry values through the `numeric` utility (tabular digits, slashed zero). Every face uses `font-display: swap` and only the subsets the app needs.
+
+<Story of={FoundationsStories.Typography} />
+
+## Spacing and radius
+
+Spacing uses Tailwind's 0.25rem scale. Use logical utilities only (`ms-`, `pe-`, `start-`, `rounded-s-`); ESLint flags physical ones.
+
+<Story of={FoundationsStories.SpacingAndRadius} />
+
+## Shadows
+
+<Story of={FoundationsStories.Shadows} />
+
+## Motion
+
+Four duration tokens and three easing curves. Under `prefers-reduced-motion: reduce` every duration becomes `0.01ms` (so `transitionend` still fires), and looping animations (spinner, skeleton shimmer) stop.
+
+<Story of={FoundationsStories.Motion} />
