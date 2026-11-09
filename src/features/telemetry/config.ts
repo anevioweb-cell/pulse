@@ -111,6 +111,12 @@ export const SIMULATOR = {
    * visible in a demo session.
    */
   DAY_CYCLE_MS: 10 * SECONDS_PER_MINUTE * MS_PER_SECOND,
+  /** Per-device baselines, drawn once per device: typical indoor conditions at sea level. */
+  TEMPERATURE_BASELINE: { min: 18, max: 26 },
+  HUMIDITY_BASELINE: { min: 35, max: 60 },
+  PRESSURE_BASELINE: { min: 1005, max: 1020 },
+  /** Wi-Fi RSSI baselines: -45 dBm next to the router, -85 dBm at the edge of coverage. */
+  SIGNAL_BASELINE: { min: -85, max: -45 },
   /** Daily-cycle amplitudes (peak deviation from each device's baseline). */
   TEMPERATURE_CYCLE_AMPLITUDE: 3,
   HUMIDITY_CYCLE_AMPLITUDE: 8,
@@ -167,3 +173,14 @@ export const CLOSE_CODES = {
   /** Application range (4000-4999): the client stopped hearing from the server. */
   HEARTBEAT_TIMEOUT: 4000,
 } as const;
+
+/** A config object with literal types widened, so tests and tools can override values. */
+export type Tunable<T> = {
+  -readonly [K in keyof T]: T[K] extends number
+    ? number
+    : T[K] extends string
+      ? string
+      : T[K] extends { readonly min: number; readonly max: number }
+        ? { min: number; max: number }
+        : T[K];
+};

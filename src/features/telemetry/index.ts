@@ -2,6 +2,7 @@
 // only from here.
 
 export { PROTOCOL, SENSOR_RANGES, WEBSOCKET, SIMULATOR, MOCK_SERVER, CLOSE_CODES } from './config';
+export type { Tunable } from './config';
 
 export { deviceSchema, deviceIdSchema } from './model/device';
 export type { Device, DeviceId } from './model/device';
@@ -30,3 +31,14 @@ export type { Scheduler } from './transport/scheduler';
 export type { WebSocketConstructor, WebSocketLike } from './transport/websocket-like';
 export { validateWebSocketUrl, WebSocketTransport } from './transport/websocket-transport';
 export type { WebSocketTransportOptions } from './transport/websocket-transport';
+
+export { SimulationEngine } from './simulator/simulation-engine';
+export type {
+  SimulationOptions,
+  SimulatorFault,
+  SimulatorFaultKind,
+} from './simulator/simulation-engine';
+export { SimulatorTransport } from './simulator/simulator-transport';
+export type { SimulatorTransportOptions, WorkerLike } from './simulator/simulator-transport';
+export { simulatorControlSchema } from './simulator/control';
+export type { SimulatorControl } from './simulator/control';

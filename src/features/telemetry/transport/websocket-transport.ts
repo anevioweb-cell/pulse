@@ -8,6 +8,7 @@ import { assertTransition } from './state-machine';
 import { emptyStats } from './types';
 import { WEBSOCKET_READY_STATE_OPEN } from './websocket-like';
 
+import type { Tunable } from '../config';
 import type { ConnectionState, ConnectionStatus } from '../model/connection';
 import type { Unsubscribe } from './listeners';
 import type { Scheduler, TimerHandle } from './scheduler';
@@ -41,7 +42,7 @@ export interface WebSocketTransportOptions {
   /** Random source in [0, 1) for backoff jitter. */
   random?: () => number;
   /** Limits, defaulting to WEBSOCKET in config.ts (overridable for tests and the probe). */
-  limits?: Partial<typeof WEBSOCKET>;
+  limits?: Partial<Tunable<typeof WEBSOCKET>>;
 }
 
 /**
@@ -54,7 +55,7 @@ export class WebSocketTransport implements TelemetryTransport {
   private readonly WebSocketImpl: WebSocketConstructor | undefined;
   private readonly scheduler: Scheduler;
   private readonly random: () => number;
-  private readonly limits: typeof WEBSOCKET;
+  private readonly limits: Tunable<typeof WEBSOCKET>;
 
   private readonly messageListeners = createListenerSet<string>();
   private readonly statusListeners = createListenerSet<ConnectionStatus>();
