@@ -37,6 +37,11 @@ Phase 3A needs a local WebSocket server that streams simulated ESP32 telemetry, 
   - Integration tests start the server on port 0.
   - Server code is outside `src/` and never imported by the app, so it cannot reach the bundle (verified in `docs/performance.md`).
 - **Negative:**
-  - Three more dev dependencies to keep updated. `ws` has had security advisories in the past (for example, the 2024 header-count DoS fixed in 8.17.1), so keep it current. It is dev-only and binds to `127.0.0.1` by default.
+  - Three more dev dependencies to keep updated. `ws` has a history of denial-of-service advisories, so keep it current. It is dev-only and binds to `127.0.0.1` by default. The 8.x advisories in the GitHub Advisory Database (queried 2026-11-09 with `gh api "/advisories?ecosystem=npm&affects=ws"`) are all fixed in the installed 8.22.2:
+    - [GHSA-3h5v-q93c-6h6q](https://github.com/advisories/GHSA-3h5v-q93c-6h6q) (CVE-2024-37890, high): DoS when handling a request with many HTTP headers, fixed in 8.17.1;
+    - [GHSA-58qx-3vcg-4xpx](https://github.com/advisories/GHSA-58qx-3vcg-4xpx) (CVE-2026-45736, medium): uninitialized memory disclosure, fixed in 8.20.1;
+    - [GHSA-96hv-2xvq-fx4p](https://github.com/advisories/GHSA-96hv-2xvq-fx4p) (CVE-2026-48779, high): memory-exhaustion DoS from tiny fragments, fixed in 8.21.0.
+
+    (Corrected 2026-11-09: the first version of this ADR cited the 2024 advisory from memory. It has now been verified, and the list is complete for 8.x.)
 - **Neutral:**
   - The server is a development tool, not production infrastructure. A real deployment (Phase 10) would put a hardened ingestion service in front of devices.
