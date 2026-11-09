@@ -74,13 +74,13 @@ export type { CancelFrame, FrameScheduler } from './service/frame-scheduler';
 export {
   telemetryService,
   telemetryStore,
-  useConnection,
-  useCounters,
-  useDevice,
-  useDeviceIds,
-  useMode,
-  useSeriesVersion,
-  useStatusSummary,
+  useLiveConnection,
+  useLiveCounters,
+  useLiveDevice,
+  useLiveDeviceIds,
+  useLiveMode,
+  useLiveSeriesVersion,
+  useLiveStatusSummary,
 } from './live';
 
 // Server-state data access (Phase 4A): REST contract, repository interface and implementations.
@@ -100,3 +100,22 @@ export { createDeviceProfile } from './simulator/device-profile';
 export type { DeviceProfile } from './simulator/device-profile';
 export { downsampleMinMax } from './history/downsample';
 export type { DownsampleResult } from './history/downsample';
+
+// Server state (TanStack Query): keys, query definitions, dependency injection and hooks.
+export { telemetryKeys, resourceOf } from './api/query-keys';
+export type { TelemetryResource } from './api/query-keys';
+export {
+  alertHistoryQuery,
+  alertRulesQuery,
+  deviceListQuery,
+  deviceQuery,
+  readingsQuery,
+} from './api/query-options';
+export { TelemetryApiProvider, useTelemetryApi } from './api/api-context';
+export {
+  useAlertHistory,
+  useAlertRules,
+  useDevice,
+  useDevices,
+  useHistoricalReadings,
+} from './api/hooks';

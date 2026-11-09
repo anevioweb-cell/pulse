@@ -219,16 +219,15 @@ export const QUERY_POLICY = {
     GC_TIME_MS: 10 * SECONDS_PER_MINUTE * MS_PER_SECOND,
   },
   /**
-   * A range entirely in the past never changes: fresh forever. A range touching "now" grows
-   * every sample interval, so it goes stale after 30 s (the live ring buffer covers the gap).
+   * A range entirely in the past never changes: fresh forever. A range touching "now" grows every
+   * sample interval, so it goes stale after 30 s (the live ring buffer covers the gap). One gcTime
+   * for both (TanStack's gcTime cannot depend on the query): 30 minutes, since past ranges are
+   * worth keeping when the user zooms back and forth.
    */
-  READINGS_PAST: {
-    STALE_TIME_MS: Number.POSITIVE_INFINITY,
+  READINGS: {
+    PAST_STALE_TIME_MS: Number.POSITIVE_INFINITY,
+    RECENT_STALE_TIME_MS: 30 * MS_PER_SECOND,
     GC_TIME_MS: 30 * SECONDS_PER_MINUTE * MS_PER_SECOND,
-  },
-  READINGS_RECENT: {
-    STALE_TIME_MS: 30 * MS_PER_SECOND,
-    GC_TIME_MS: 10 * SECONDS_PER_MINUTE * MS_PER_SECOND,
   },
   /** New alerts can fire any minute; refetch after 15 s when someone is looking. */
   ALERTS: {

@@ -25,7 +25,7 @@ flowchart LR
 
   subgraph Store["Zustand store (read-only for UI)"]
     STATE[Immutable state:<br/>connection, devices Map,<br/>ids, counters, versions]
-    SEL[Selectors / hooks<br/>useDevice, useDeviceIds,<br/>useStatusSummary, useSeriesVersion]
+    SEL[Selectors / hooks<br/>useLiveDevice, useLiveDeviceIds,<br/>useLiveStatusSummary, useLiveSeriesVersion]
   end
 
   UI[Components<br/>Phase 5]
@@ -119,10 +119,10 @@ flowchart LR
 
 - **Responsibility:** narrow subscriptions for components.
 - **Rules for components:**
-  1. Subscribe to the narrowest slice: `useDevice(id)`, `useDeviceIds()`, `useConnection()`, `useStatusSummary()`. Never select the whole state.
+  1. Subscribe to the narrowest slice: `useLiveDevice(id)`, `useLiveDeviceIds()`, `useLiveConnection()`, `useLiveStatusSummary()`. Never select the whole state.
   2. A selector that returns a new object or array must use `useShallow` (as `useStatusSummary` does).
-  3. Charts subscribe to `useSeriesVersion(id)` and read the ring buffers (`device.series.get(metric).segments()` or `.range()`) when the version changes. Buffer contents must never be put in React state.
-  4. `useCounters()` changes on every publish: use it only in diagnostics views.
+  3. Charts subscribe to `useLiveSeriesVersion(id)` and read the ring buffers (`device.series.get(metric).segments()` or `.range()`) when the version changes. Buffer contents must never be put in React state.
+  4. `useLiveCounters()` changes on every publish: use it only in diagnostics views.
 - **Verified:** a test with render counters shows that an update to device A does not re-render subscribers to device B, the id list, or an unchanged status summary.
 
 ### 8. Components (Phase 5)

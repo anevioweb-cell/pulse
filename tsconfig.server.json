@@ -15,6 +15,8 @@
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
     "noEmit": true,
+    // The feature index (imported by the server) includes the API provider component.
+    "jsx": "react-jsx",
 
     /* Same path aliases as the app (tsconfig.app.json, vite.config.ts); tsx reads them via --tsconfig */
     "paths": {
