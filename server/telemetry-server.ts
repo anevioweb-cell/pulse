@@ -1,0 +1,212 @@
+import { WebSocketServer } from 'ws';
+
+import {
+  CLOSE_CODES,
+  encodeMessage,
+  MOCK_SERVER,
+  parseTelemetryMessage,
+  PROTOCOL,
+  SimulationEngine,
+  SIMULATOR,
+  WEBSOCKET,
+} from '../src/features/telemetry';
+
+import type { TelemetryMessage } from '../src/features/telemetry';
+import type { AddressInfo } from 'node:net';
+import type { WebSocket } from 'ws';
+
+export interface TelemetryServerOptions {
+  /** Interface to bind. Defaults to loopback only. */
+  host?: string;
+  /** TCP port; 0 picks a free port (tests). */
+  port?: number;
+  seed?: number;
+  deviceCount?: number;
+  rateHz?: number;
+  log?: (line: string) => void;
+}
+
+export interface TelemetryServerStats {
+  connections: number;
+  framesSent: number;
+  framesDroppedSlowConsumer: number;
+  pingsAnswered: number;
+  rejectedInbound: number;
+  rateLimitedClients: number;
+}
+
+export interface TelemetryServer {
+  readonly url: string;
+  readonly port: number;
+  readonly clientCount: number;
+  readonly stats: Readonly<TelemetryServerStats>;
+  /** Graceful shutdown: close every client (1001), wait up to the grace period, then stop. */
+  close: () => Promise<void>;
+}
+
+interface ClientState {
+  alive: boolean;
+  windowStart: number;
+  windowCount: number;
+}
+
+/**
+ * Mock telemetry server for development and tests: streams the same SimulationEngine output that
+ * Demo Mode uses, over plain WebSocket, with the protocol's frame size limit, a per-connection
+ * inbound rate limit, a slow-consumer guard, protocol-level ping/pong to drop dead connections,
+ * and answers to application-level `ping` messages.
+ */
+export async function startTelemetryServer({
+  host = MOCK_SERVER.DEFAULT_HOST,
+  port = MOCK_SERVER.DEFAULT_PORT,
+  seed = SIMULATOR.DEFAULT_SEED,
+  deviceCount = SIMULATOR.DEFAULT_DEVICE_COUNT,
+  rateHz = SIMULATOR.DEFAULT_RATE_HZ,
+  log = () => undefined,
+}: TelemetryServerOptions = {}): Promise<TelemetryServer> {
+  const engine = new SimulationEngine({ startTime: Date.now(), seed, deviceCount, rateHz });
+  const clients = new Map<WebSocket, ClientState>();
+  const stats: TelemetryServerStats = {
+    connections: 0,
+    framesSent: 0,
+    framesDroppedSlowConsumer: 0,
+    pingsAnswered: 0,
+    rejectedInbound: 0,
+    rateLimitedClients: 0,
+  };
+
+  const wss = new WebSocketServer({
+    host,
+    port,
+    // Frames above the protocol limit are refused by ws itself (close 1009).
+    maxPayload: PROTOCOL.MAX_FRAME_BYTES,
+    // No compression: avoids decompression bombs and CPU cost; telemetry frames are tiny.
+    perMessageDeflate: false,
+  });
+
+  await new Promise<void>((resolve, reject) => {
+    wss.once('listening', resolve);
+    wss.once('error', reject);
+  });
+  const address = wss.address() as AddressInfo;
+
+  const sendFrames = (socket: WebSocket, frames: readonly string[]) => {
+    for (const frame of frames) {
+      if (socket.readyState !== socket.OPEN) return;
+      if (socket.bufferedAmount > MOCK_SERVER.MAX_CLIENT_BUFFERED_BYTES) {
+        stats.framesDroppedSlowConsumer += 1;
+        continue;
+      }
+      socket.send(frame);
+      stats.framesSent += 1;
+    }
+  };
+
+  const encodeAll = (messages: readonly TelemetryMessage[]) => messages.map(encodeMessage);
+
+  wss.on('connection', (socket, request) => {
+    stats.connections += 1;
+    const state: ClientState = { alive: true, windowStart: Date.now(), windowCount: 0 };
+    clients.set(socket, state);
+    log(
+      `client connected from ${request.socket.remoteAddress ?? 'unknown'} (${String(clients.size)} total)`,
+    );
+
+    // A new client first learns which devices exist.
+    sendFrames(socket, encodeAll(engine.announce()));
+
+    socket.on('pong', () => {
+      state.alive = true;
+    });
+
+    socket.on('message', (data, isBinary) => {
+      const now = Date.now();
+      if (now - state.windowStart >= WEBSOCKET.RATE_WINDOW_MS) {
+        state.windowStart = now;
+        state.windowCount = 0;
+      }
+      state.windowCount += 1;
+      if (state.windowCount > MOCK_SERVER.MAX_CLIENT_MESSAGES_PER_SECOND) {
+        stats.rateLimitedClients += 1;
+        socket.close(CLOSE_CODES.POLICY_VIOLATION, 'rate limit exceeded');
+        return;
+      }
+      if (isBinary) {
+        stats.rejectedInbound += 1;
+        return;
+      }
+      // Inbound frames go through the same parser as everything else.
+      const result = parseTelemetryMessage(Buffer.from(data as Buffer).toString('utf8'));
+      if (!result.ok) {
+        stats.rejectedInbound += 1;
+        return;
+      }
+      if (result.message.type === 'ping') {
+        stats.pingsAnswered += 1;
+        sendFrames(socket, [
+          encodeMessage({ v: PROTOCOL.VERSION, type: 'pong', ts: now, pingTs: result.message.ts }),
+        ]);
+      }
+    });
+
+    socket.on('error', (error) => {
+      log(`client error: ${error.message}`);
+    });
+
+    socket.on('close', (code) => {
+      clients.delete(socket);
+      log(`client disconnected (${String(code)}, ${String(clients.size)} left)`);
+    });
+  });
+
+  const ticker = setInterval(() => {
+    const frames = encodeAll(engine.advance(Date.now()));
+    if (frames.length === 0) return;
+    for (const socket of clients.keys()) sendFrames(socket, frames);
+  }, SIMULATOR.TICK_MS);
+
+  // Protocol-level ping: a client that has not answered the previous ping is gone.
+  const reaper = setInterval(() => {
+    for (const [socket, state] of clients) {
+      if (!state.alive) {
+        socket.terminate();
+        continue;
+      }
+      state.alive = false;
+      socket.ping();
+    }
+  }, MOCK_SERVER.PROTOCOL_PING_INTERVAL_MS);
+
+  let closing: Promise<void> | null = null;
+  const close = () => {
+    closing ??= (async () => {
+      clearInterval(ticker);
+      clearInterval(reaper);
+      // Stop accepting connections first, so reconnecting clients cannot prolong the shutdown.
+      const stopped = new Promise<void>((resolve) => {
+        wss.close(() => {
+          resolve();
+        });
+      });
+      for (const socket of clients.keys()) socket.close(CLOSE_CODES.GOING_AWAY, 'server shutdown');
+      const deadline = Date.now() + MOCK_SERVER.SHUTDOWN_GRACE_MS;
+      while (clients.size > 0 && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, SIMULATOR.TICK_MS));
+      }
+      for (const socket of clients.keys()) socket.terminate();
+      await stopped;
+    })();
+    return closing;
+  };
+
+  const url = `ws://${address.address.includes(':') ? `[${address.address}]` : address.address}:${String(address.port)}`;
+  return {
+    url,
+    port: address.port,
+    get clientCount() {
+      return clients.size;
+    },
+    stats,
+    close,
+  };
+}

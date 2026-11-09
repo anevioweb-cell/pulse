@@ -11,15 +11,18 @@ if (!('ResizeObserver' in globalThis)) {
   };
 }
 
+// Node-environment tests (server/) have no DOM; only polyfill where one exists.
 const elementPolyfills = {
   hasPointerCapture: () => false,
   setPointerCapture: () => undefined,
   releasePointerCapture: () => undefined,
   scrollIntoView: () => undefined,
 };
+const elementPrototype: object | undefined =
+  typeof Element === 'undefined' ? undefined : Element.prototype;
 for (const [name, implementation] of Object.entries(elementPolyfills)) {
-  if (!(name in Element.prototype)) {
-    Object.defineProperty(Element.prototype, name, {
+  if (elementPrototype && !(name in elementPrototype)) {
+    Object.defineProperty(elementPrototype, name, {
       value: implementation,
       configurable: true,
       writable: true,

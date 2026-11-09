@@ -158,6 +158,11 @@ export const MOCK_SERVER = {
   DEFAULT_PORT: 8787,
   /** Inbound frames per client per second; clients only send pings, so 20/s is generous. */
   MAX_CLIENT_MESSAGES_PER_SECOND: 20,
+  /**
+   * Slow-consumer guard: while a client has more than 1 MiB of unsent data buffered, new frames
+   * for it are dropped instead of growing server memory without bound.
+   */
+  MAX_CLIENT_BUFFERED_BYTES: 1024 * 1024,
   /** Protocol-level ping to detect dead TCP connections (clients that vanished without closing). */
   PROTOCOL_PING_INTERVAL_MS: 30 * MS_PER_SECOND,
   /** On SIGINT/SIGTERM, clients get this long to close cleanly before being terminated. */
