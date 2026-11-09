@@ -21,3 +21,4 @@ export type {
   QueryPersistenceOptions,
   RestoreReport,
 } from './persistence';
+export { useQueryUpdatedAt } from './use-query-updated-at';
