@@ -1,6 +1,6 @@
 # 0016. Cache policy and staleness per resource
 
-- **Status:** Accepted
+- **Status:** Accepted. The alert-rules row is amended by [0018](0018-demo-alert-rules-persistence.md), which adds revalidation on every mount.
 - **Date:** 2026-11-09
 
 ## Context
