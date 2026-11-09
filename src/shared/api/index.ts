@@ -13,6 +13,7 @@ export {
   persistQueryCache,
   restoreQueryCache,
   serializeQueryCache,
+  withStorageTimeout,
 } from './persistence';
 export type {
   KeyValueStorage,

@@ -20,11 +20,18 @@ export interface KeyValueStorage {
 const DATABASE = 'pulse';
 const OBJECT_STORE = 'query-cache';
 
-/** IndexedDB via idb-keyval, or null where IndexedDB does not exist (old browsers, some tests). */
-export function createIdbStorage(): KeyValueStorage | null {
+/**
+ * IndexedDB via idb-keyval, or null where IndexedDB does not exist (old browsers, some tests).
+ * Each caller that needs its own data gets its own database: idb-keyval opens a database without
+ * a version upgrade, so it cannot add a second object store to an existing one.
+ */
+export function createIdbStorage({
+  database = DATABASE,
+  store: objectStore = OBJECT_STORE,
+}: { database?: string; store?: string } = {}): KeyValueStorage | null {
   if (typeof globalThis.indexedDB === 'undefined') return null;
   try {
-    const store = createStore(DATABASE, OBJECT_STORE);
+    const store = createStore(database, objectStore);
     return {
       get: (key) => get(key, store),
       set: (key, value) => set(key, value, store),
@@ -165,7 +172,8 @@ export type RestoreReport =
 const encoder = new TextEncoder();
 const storageKey = (namespace: string) => `pulse.query-cache.${namespace}`;
 
-function withTimeout<T>(promise: Promise<T>): Promise<T> {
+/** Rejects if a storage operation takes longer than PERSISTENCE.IO_TIMEOUT_MS (blocked database). */
+export function withStorageTimeout<T>(promise: Promise<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error('storage timeout'));
@@ -204,7 +212,7 @@ export async function restoreQueryCache(options: QueryPersistenceOptions): Promi
     reason: Extract<RestoreReport, { status: 'discarded' }>['reason'],
   ): Promise<RestoreReport> => {
     try {
-      await withTimeout(storage.del(key));
+      await withStorageTimeout(storage.del(key));
     } catch {
       // Could not delete either: nothing else to do.
     }
@@ -213,7 +221,7 @@ export async function restoreQueryCache(options: QueryPersistenceOptions): Promi
 
   let raw: unknown;
   try {
-    raw = await withTimeout(storage.get(key));
+    raw = await withStorageTimeout(storage.get(key));
   } catch {
     return { status: 'discarded', reason: 'storage_error' };
   }
@@ -300,7 +308,7 @@ export function persistQueryCache(options: QueryPersistenceOptions): () => void 
     timer = null;
     if (disabled) return;
     try {
-      await withTimeout(storage.set(storageKey(namespace), serializeQueryCache(options)));
+      await withStorageTimeout(storage.set(storageKey(namespace), serializeQueryCache(options)));
     } catch {
       disabled = true; // quota exceeded, blocked or broken: memory-only from now on
     }
