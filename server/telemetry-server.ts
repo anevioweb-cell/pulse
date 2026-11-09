@@ -23,6 +23,12 @@ export interface TelemetryServerOptions {
   seed?: number;
   deviceCount?: number;
   rateHz?: number;
+  /**
+   * Relay mode: valid `device_online`, `reading` and `device_offline` frames received from a
+   * client (a real ESP32) are re-encoded from the parsed result and forwarded to all other
+   * clients. Off by default.
+   */
+  relay?: boolean;
   log?: (line: string) => void;
 }
 
@@ -33,6 +39,7 @@ export interface TelemetryServerStats {
   pingsAnswered: number;
   rejectedInbound: number;
   rateLimitedClients: number;
+  relayed: number;
 }
 
 export interface TelemetryServer {
@@ -62,6 +69,7 @@ export async function startTelemetryServer({
   seed = SIMULATOR.DEFAULT_SEED,
   deviceCount = SIMULATOR.DEFAULT_DEVICE_COUNT,
   rateHz = SIMULATOR.DEFAULT_RATE_HZ,
+  relay = false,
   log = () => undefined,
 }: TelemetryServerOptions = {}): Promise<TelemetryServer> {
   const engine = new SimulationEngine({ startTime: Date.now(), seed, deviceCount, rateHz });
@@ -73,6 +81,7 @@ export async function startTelemetryServer({
     pingsAnswered: 0,
     rejectedInbound: 0,
     rateLimitedClients: 0,
+    relayed: 0,
   };
 
   const wss = new WebSocketServer({
@@ -141,11 +150,21 @@ export async function startTelemetryServer({
         stats.rejectedInbound += 1;
         return;
       }
-      if (result.message.type === 'ping') {
+      const message = result.message;
+      if (message.type === 'ping') {
         stats.pingsAnswered += 1;
         sendFrames(socket, [
-          encodeMessage({ v: PROTOCOL.VERSION, type: 'pong', ts: now, pingTs: result.message.ts }),
+          encodeMessage({ v: PROTOCOL.VERSION, type: 'pong', ts: now, pingTs: message.ts }),
         ]);
+        return;
+      }
+      if (relay && message.type !== 'pong') {
+        // Forward the sanitized, re-encoded message, never the raw bytes.
+        const frame = encodeMessage(message);
+        for (const other of clients.keys()) {
+          if (other !== socket) sendFrames(other, [frame]);
+        }
+        stats.relayed += 1;
       }
     });
 

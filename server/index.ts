@@ -15,6 +15,7 @@ const optionsSchema = z.strictObject({
   seed: z.coerce.number().check(z.int(), z.gte(0)),
   devices: z.coerce.number().check(z.int(), z.gte(1), z.lte(SIMULATOR.MAX_DEVICE_COUNT)),
   rate: z.coerce.number().check(z.gte(SIMULATOR.MIN_RATE_HZ), z.lte(SIMULATOR.MAX_RATE_HZ)),
+  relay: z.boolean(),
 });
 
 const { values } = parseArgs({
@@ -27,6 +28,8 @@ const { values } = parseArgs({
       default: process.env.PULSE_DEVICES ?? String(SIMULATOR.DEFAULT_DEVICE_COUNT),
     },
     rate: { type: 'string', default: process.env.PULSE_RATE ?? String(SIMULATOR.DEFAULT_RATE_HZ) },
+    /** Forward frames from real devices (see firmware/esp32-telemetry). */
+    relay: { type: 'boolean', default: process.env.PULSE_RELAY === '1' },
   },
   strict: true,
 });
@@ -53,12 +56,15 @@ const server = await startTelemetryServer({
   seed: options.seed,
   deviceCount: options.devices,
   rateHz: options.rate,
+  relay: options.relay,
   log: (line) => {
     console.log(`[server] ${line}`);
   },
 });
 console.log(
-  `[server] streaming ${String(options.devices)} simulated devices at ${String(options.rate)} Hz on ${server.url}`,
+  `[server] streaming ${String(options.devices)} simulated devices at ${String(options.rate)} Hz on ${server.url}${
+    options.relay ? ' (relaying device frames)' : ''
+  }`,
 );
 
 const shutdown = (signal: string) => {

@@ -21,8 +21,14 @@ const RATE_HZ = 5;
 let server: TelemetryServer | null = null;
 const transports: WebSocketTransport[] = [];
 
-async function start() {
-  server = await startTelemetryServer({ port: 0, seed: 42, deviceCount: DEVICES, rateHz: RATE_HZ });
+async function start(relay = false) {
+  server = await startTelemetryServer({
+    port: 0,
+    seed: 42,
+    deviceCount: DEVICES,
+    rateHz: RATE_HZ,
+    relay,
+  });
   return server;
 }
 
@@ -141,6 +147,66 @@ describe('mock telemetry server', () => {
     });
     expect(server?.stats.rejectedInbound).toBe(3);
     expect(transport.getStatus().state).toBe('open');
+  });
+
+  it('relays valid device frames to other clients only in relay mode, re-encoded', async () => {
+    const reading = {
+      v: PROTOCOL.VERSION,
+      type: 'reading',
+      ts: Date.now(),
+      deviceId: 'esp32-hardware',
+      seq: 1,
+      values: { temperature: 22.5, humidity: 40, signal: -60 },
+    } as const;
+    const device = {
+      v: 1,
+      type: 'device_online',
+      ts: Date.now(),
+      device: {
+        id: 'esp32-hardware',
+        name: ' Real\u0007 ESP32 ',
+        location: 'Desk',
+        firmware: '0.1.0',
+      },
+    };
+
+    for (const relay of [false, true]) {
+      const { url } = await start(relay);
+      const { transport, messages } = connectTransport(url);
+      await vi.waitFor(() => {
+        expect(transport.getStatus().state).toBe('open');
+      });
+      await new Promise<void>((resolve) => {
+        const socket = new WsClient(url);
+        socket.on('open', () => {
+          socket.send(JSON.stringify(device));
+          socket.send(encodeMessage(reading));
+          setTimeout(() => {
+            socket.close();
+            resolve();
+          }, 200);
+        });
+      });
+      const fromHardware = messages.filter(
+        (message) =>
+          ('deviceId' in message && message.deviceId === 'esp32-hardware') ||
+          (message.type === 'device_online' && message.device.id === 'esp32-hardware'),
+      );
+      if (relay) {
+        expect(fromHardware).toEqual([
+          expect.objectContaining({
+            type: 'device_online',
+            device: expect.objectContaining({ name: 'Real ESP32' }) as unknown,
+          }),
+          reading,
+        ]);
+      } else {
+        expect(fromHardware).toEqual([]);
+      }
+      transport.disconnect();
+      await server?.close();
+      server = null;
+    }
   });
 
   it('shuts down gracefully: clients receive 1001 and the transport starts reconnecting', async () => {
