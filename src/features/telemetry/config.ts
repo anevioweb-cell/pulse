@@ -174,7 +174,7 @@ export const API = {
   /**
    * Most points a readings response may contain. Charts need about one point per horizontal pixel;
    * min/max downsampling emits 2 per bucket, so 2000 covers a 1000-bucket chart (wider than most
-   * screens) while keeping responses around 60 KB.
+   * screens) while keeping responses around 36-44 KB of JSON (measured over 7 days, per metric).
    */
   MAX_POINTS: 2000,
   /** Fewest points a client may ask for: min/max downsampling keeps a minimum and a maximum. */
@@ -182,8 +182,8 @@ export const API = {
   /** Default when the client does not ask: enough for a card-sized sparkline or small chart. */
   DEFAULT_MAX_POINTS: 500,
   /**
-   * Longest readings range: 7 days = 60,480 raw samples at the 10 s history resolution, computed
-   * and downsampled in a few milliseconds per request.
+   * Longest readings range: 7 days = 60,481 raw samples at the 10 s history resolution (both ends
+   * included), computed and downsampled in ~7.5 ms per request (median, Node, docs/performance.md).
    */
   MAX_RANGE_MS: 7 * HOURS_PER_DAY * MS_PER_HOUR,
   /** Alert history evaluates rules once per simulated minute (1,440 checks per device-rule-day). */

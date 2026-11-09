@@ -10,8 +10,9 @@ export const HTTP = {
   TIMEOUT_MS: 10 * MS_PER_SECOND,
   /**
    * Largest accepted response body. The biggest legitimate payload is a readings series at the
-   * 2000-point cap (~60 KB of JSON) or a 256-device list (~40 KB); 512 KiB is ~8x headroom while
-   * keeping a hostile or buggy server from filling memory.
+   * 2000-point cap (36-44 KB of JSON, measured) or a 256-device list (~26 KB at the measured
+   * ~100 B per device); 512 KiB is >10x headroom while keeping a hostile or buggy server from
+   * filling memory.
    */
   MAX_RESPONSE_BYTES: 512 * KIB,
   /** Validation issues kept in an error (enough to debug, bounded for logs and UI). */
