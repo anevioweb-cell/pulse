@@ -3,6 +3,10 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "sideEffects": [
+    "**/*.css",
+    "./src/main.tsx"
+  ],
   "license": "MIT",
   "engines": {
     "node": ">=24"

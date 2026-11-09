@@ -1,14 +1,15 @@
 import { cva } from 'class-variance-authority';
-import { CircleAlert, CircleCheck, Info, TriangleAlert, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
 import { cn } from '@/shared/lib';
 
 import { IconButton } from '../IconButton/IconButton';
+import { StatusIcon } from '../internal/StatusIcon';
 import { dismissToast, getToasts, subscribeToToasts } from './toast-store';
 
-import type { ToastRecord, ToastVariant } from './toast-store';
-import type { KeyboardEvent, ReactNode } from 'react';
+import type { ToastRecord } from './toast-store';
+import type { KeyboardEvent } from 'react';
 
 const toastVariants = cva(
   [
@@ -28,23 +29,17 @@ const toastVariants = cva(
   },
 );
 
-// Each status has its own icon shape, so the variant is never conveyed by color alone.
-const ICON_CLASSES = 'size-5 shrink-0';
-const VARIANT_ICONS = new Map<ToastVariant, ReactNode>([
-  [
-    'success',
-    <CircleCheck key="success" aria-hidden="true" className={`${ICON_CLASSES} text-success`} />,
-  ],
-  [
-    'warning',
-    <TriangleAlert key="warning" aria-hidden="true" className={`${ICON_CLASSES} text-warning`} />,
-  ],
-  [
-    'danger',
-    <CircleAlert key="danger" aria-hidden="true" className={`${ICON_CLASSES} text-danger`} />,
-  ],
-  ['info', <Info key="info" aria-hidden="true" className={`${ICON_CLASSES} text-info`} />],
-]);
+const iconVariants = cva('size-5 shrink-0', {
+  variants: {
+    variant: {
+      neutral: '',
+      success: 'text-success',
+      warning: 'text-warning',
+      danger: 'text-danger',
+      info: 'text-info',
+    },
+  },
+});
 
 function ToastItem({ toast, dismissLabel }: { toast: ToastRecord; dismissLabel: string }) {
   const [paused, setPaused] = useState(false);
@@ -85,7 +80,8 @@ function ToastItem({ toast, dismissLabel }: { toast: ToastRecord; dismissLabel: 
         setPaused(false);
       }}
     >
-      {VARIANT_ICONS.get(toast.variant)}
+      {/* Each status has its own icon shape, so the variant is never conveyed by color alone. */}
+      <StatusIcon status={toast.variant} className={iconVariants({ variant: toast.variant })} />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <p className="text-sm font-semibold">{toast.title}</p>
         {toast.description && <p className="text-sm text-text-muted">{toast.description}</p>}

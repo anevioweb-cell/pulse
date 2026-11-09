@@ -1,7 +1,8 @@
 import { cva } from 'class-variance-authority';
-import { CircleAlert, CircleCheck, Info, TriangleAlert } from 'lucide-react';
 
 import { cn } from '@/shared/lib';
+
+import { StatusIcon } from '../internal/StatusIcon';
 
 import type { VariantProps } from 'class-variance-authority';
 import type { ComponentProps, ReactNode } from 'react';
@@ -27,16 +28,6 @@ const badgeVariants = cva(
   },
 );
 
-type BadgeVariant = NonNullable<VariantProps<typeof badgeVariants>['variant']>;
-
-// Status variants carry a distinct shape as well as a color (WCAG 1.4.1).
-const STATUS_ICONS = new Map<BadgeVariant, ReactNode>([
-  ['success', <CircleCheck key="success" aria-hidden="true" />],
-  ['warning', <TriangleAlert key="warning" aria-hidden="true" />],
-  ['danger', <CircleAlert key="danger" aria-hidden="true" />],
-  ['info', <Info key="info" aria-hidden="true" />],
-]);
-
 export interface BadgeProps extends ComponentProps<'span'>, VariantProps<typeof badgeVariants> {
   /**
    * Leading icon. Status variants show a default icon so the status is not conveyed by color
@@ -48,7 +39,7 @@ export interface BadgeProps extends ComponentProps<'span'>, VariantProps<typeof 
 /** Small status or category label. Text is drawn on a raised surface, so contrast is token-checked. */
 export function Badge({ variant, size, icon, className, children, ...props }: BadgeProps) {
   const resolvedVariant = variant ?? 'neutral';
-  const leadingIcon = icon === undefined ? STATUS_ICONS.get(resolvedVariant) : icon;
+  const leadingIcon = icon === undefined ? <StatusIcon status={resolvedVariant} /> : icon;
 
   return (
     <span
