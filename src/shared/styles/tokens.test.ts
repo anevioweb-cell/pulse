@@ -45,6 +45,7 @@ const pairs: Pair[] = [
     ...CHART_SERIES.map((foreground) => ({ foreground, background, minimum: MIN_NON_TEXT })),
   ]),
   { foreground: 'accent-foreground', background: 'accent', minimum: MIN_TEXT },
+  { foreground: 'danger-foreground', background: 'danger', minimum: MIN_TEXT },
 ];
 
 describe.each(Object.entries(themes))('%s theme contrast', (theme, tokens) => {

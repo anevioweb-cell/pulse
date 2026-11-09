@@ -22,6 +22,15 @@ describe('color-contrast utilities', () => {
     expect(resolveToken('--c', tokens)).toBe('#112233');
   });
 
+  it('reads past nested @keyframes and into nested selector blocks', () => {
+    const css = `@theme {\n  --a: #111111;\n  @keyframes spin { to { rotate: 1turn; } }\n  --b: #222222;\n}\n@media (x) {\n  :root { --c: 1ms; }\n}`;
+    expect([...parseBlock(css, '@theme')]).toEqual([
+      ['--a', '#111111'],
+      ['--b', '#222222'],
+    ]);
+    expect(parseBlock(css, '@media (x)').get('--c')).toBe('1ms');
+  });
+
   it('reports unknown and circular references', () => {
     expect(() => resolveToken('--missing', new Map())).toThrow(/Unknown token/);
     const loop = new Map([

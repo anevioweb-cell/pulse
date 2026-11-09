@@ -19,14 +19,36 @@ const CONTRAST_OFFSET = 0.05;
 
 export type TokenMap = ReadonlyMap<string, string>;
 
+/** Index of the `}` matching the `{` at `open`. */
+function matchingBrace(source: string, open: number): number {
+  let depth = 0;
+  for (let index = open; index < source.length; index += 1) {
+    const char = source.charAt(index);
+    if (char === '{') depth += 1;
+    if (char === '}') depth -= 1;
+    if (depth === 0) return index;
+  }
+  throw new Error('Unbalanced braces');
+}
+
+/** Removes nested at-rule blocks such as `@keyframes name { ... }` (not selector blocks). */
+function stripNestedAtRules(body: string): string {
+  let result = body;
+  for (let at = result.indexOf('@'); at !== -1; at = result.indexOf('@')) {
+    const open = result.indexOf('{', at);
+    if (open === -1) break;
+    result = result.slice(0, at) + result.slice(matchingBrace(result, open) + 1);
+  }
+  return result;
+}
+
 /** Returns the declarations of the first rule whose header matches exactly, e.g. `@theme`. */
 export function parseBlock(css: string, header: string): Map<string, string> {
   const source = `\n${css.replace(COMMENT, '')}`;
   const start = source.indexOf(`\n${header} {`);
   if (start === -1) throw new Error(`Block "${header}" not found`);
   const open = source.indexOf('{', start);
-  const close = source.indexOf('}', open);
-  const body = source.slice(open + 1, close);
+  const body = stripNestedAtRules(source.slice(open + 1, matchingBrace(source, open)));
   return new Map(
     [...body.matchAll(DECLARATION)].map(([, name = '', value = '']) => [name, value.trim()]),
   );

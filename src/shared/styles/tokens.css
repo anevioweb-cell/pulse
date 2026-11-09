@@ -164,8 +164,11 @@
   --color-success: var(--green-700);
   --color-warning: var(--amber-700);
   --color-danger: var(--red-700);
+  --color-danger-foreground: var(--neutral-0);
   --color-info: var(--blue-700);
   --color-focus-ring: var(--brand-600);
+  /* Backdrop behind modal dialogs (not a text color, so not contrast-tested). */
+  --color-scrim: rgb(9 12 16 / 0.5);
 
   --color-chart-1: var(--chart-blue-light);
   --color-chart-2: var(--chart-vermillion-light);
@@ -203,6 +206,54 @@
   --z-index-modal: 400;
   --z-index-toast: 500;
   --z-index-tooltip: 600;
+
+  /* Animations. Durations come from the motion tokens, so they collapse under reduced motion. */
+  --animate-fade-in: fade-in var(--transition-duration-normal) var(--ease-enter);
+  --animate-fade-out: fade-out var(--transition-duration-fast) var(--ease-exit);
+  --animate-pop-in: pop-in var(--transition-duration-normal) var(--ease-enter);
+  --animate-pop-out: pop-out var(--transition-duration-fast) var(--ease-exit);
+  --animate-slide-up-in: slide-up-in var(--transition-duration-slow) var(--ease-enter);
+  --animate-spin: spin 0.8s linear infinite;
+  --animate-shimmer: shimmer 1.6s var(--ease-standard) infinite;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes fade-out {
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      scale: 0.96;
+    }
+  }
+  @keyframes pop-out {
+    to {
+      opacity: 0;
+      scale: 0.96;
+    }
+  }
+  @keyframes slide-up-in {
+    from {
+      opacity: 0;
+      translate: 0 0.5rem;
+    }
+  }
+  @keyframes spin {
+    to {
+      rotate: 360deg;
+    }
+  }
+  @keyframes shimmer {
+    50% {
+      opacity: 0.5;
+    }
+  }
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -222,8 +273,10 @@
   --color-success: var(--green-400);
   --color-warning: var(--amber-400);
   --color-danger: var(--red-400);
+  --color-danger-foreground: var(--neutral-1000);
   --color-info: var(--blue-400);
   --color-focus-ring: var(--brand-400);
+  --color-scrim: rgb(0 0 0 / 0.7);
 
   --color-chart-1: var(--chart-blue-dark);
   --color-chart-2: var(--chart-vermillion-dark);
@@ -236,6 +289,14 @@
   --shadow-tint-strong: rgb(0 0 0 / 0.6);
 
   color-scheme: dark;
+}
+
+/* Arabic locale: put the Arabic face first so mixed Latin/Arabic text uses one family where possible
+   (Vazirmatn's Latin subset is not loaded, so Latin still falls back to Inter). */
+:root:lang(ar) {
+  --font-sans:
+    'Vazirmatn Variable', 'Inter Variable', ui-sans-serif, system-ui, sans-serif,
+    'Apple Color Emoji', 'Segoe UI Emoji';
 }
 
 /* Reduced motion: collapse every duration token to near zero. Not exactly 0, so transitionend and
