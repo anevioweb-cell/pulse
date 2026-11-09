@@ -109,7 +109,7 @@ const readingsCases: [string, Omit<ReadingsRequest, 'deviceId'>][] = [
     { metric: 'temperature', from: NOW - 10 * MINUTE, to: NOW },
   ],
   [
-    'min-max: 24 h into 2 points',
+    'min-max: the longest range (7 days) into 2 points',
     { metric: 'humidity', from: NOW - API.MAX_RANGE_MS, to: NOW, maxPoints: 2 },
   ],
   [
@@ -117,7 +117,7 @@ const readingsCases: [string, Omit<ReadingsRequest, 'deviceId'>][] = [
     { metric: 'pressure', from: NOW - 6 * HOUR, to: NOW, maxPoints: 100 },
   ],
   [
-    'min-max: 24 h at the maximum budget',
+    'min-max: the longest range at the maximum budget',
     { metric: 'battery', from: NOW - API.MAX_RANGE_MS, to: NOW, maxPoints: API.MAX_POINTS },
   ],
   ['partly in the future', { metric: 'signal', from: NOW - HOUR, to: NOW + HOUR, maxPoints: 50 }],
