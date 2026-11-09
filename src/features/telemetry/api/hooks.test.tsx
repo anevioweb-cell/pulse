@@ -8,7 +8,15 @@ import { QUERY_POLICY } from '../config';
 import { EXAMPLE_TS } from '../model/fixtures';
 import { TelemetryApiProvider } from './api-context';
 import { DemoTelemetryApi } from './demo-telemetry-api';
-import { useAlertRules, useDevice, useDevices, useHistoricalReadings } from './hooks';
+import {
+  useAlertRules,
+  useCreateAlertRule,
+  useDeleteAlertRule,
+  useDevice,
+  useDevices,
+  useHistoricalReadings,
+  useUpdateAlertRule,
+} from './hooks';
 import { telemetryKeys } from './query-keys';
 
 import type { TelemetryApi } from './telemetry-api';
@@ -246,5 +254,52 @@ describe('telemetryKeys', () => {
     expect(invalidated(keys.b)).toBe(false);
     expect(invalidated(keys.list)).toBe(false);
     expect(invalidated(keys.demoA)).toBe(false);
+  });
+});
+
+describe('alert rule mutation hooks', () => {
+  it('create, update and delete through the hooks, ending with the repository state', async () => {
+    vi.useFakeTimers();
+    const api = new DemoTelemetryApi({
+      now: () => NOW,
+      ruleStorage: null,
+      generateId: () => 'rule-new',
+    });
+    const setupResult = setup(api);
+    client = setupResult.client;
+    const { result } = renderHook(
+      () => ({
+        rules: useAlertRules(),
+        create: useCreateAlertRule(),
+        update: useUpdateAlertRule(),
+        remove: useDeleteAlertRule(),
+      }),
+      { wrapper: setupResult.wrapper },
+    );
+    await settle();
+    const input = {
+      name: 'Humid',
+      deviceId: null,
+      metric: 'humidity',
+      comparator: 'above',
+      threshold: 70,
+      enabled: true,
+    } as const;
+    act(() => {
+      result.current.create.mutate(input);
+    });
+    await settle();
+    expect(result.current.rules.data).toContainEqual({ ...input, id: 'rule-new' });
+    act(() => {
+      result.current.update.mutate({ id: 'rule-new', input: { ...input, threshold: 75 } });
+    });
+    await settle();
+    expect(result.current.rules.data).toContainEqual({ ...input, threshold: 75, id: 'rule-new' });
+    act(() => {
+      result.current.remove.mutate({ id: 'rule-new' });
+    });
+    await settle();
+    expect(result.current.remove.isSuccess).toBe(true);
+    expect(result.current.rules.data).toEqual(await api.listAlertRules());
   });
 });

@@ -115,9 +115,23 @@ export { TelemetryApiProvider, useTelemetryApi } from './api/api-context';
 export {
   useAlertHistory,
   useAlertRules,
+  useCreateAlertRule,
+  useDeleteAlertRule,
   useDevice,
   useDevices,
   useHistoricalReadings,
+  useUpdateAlertRule,
 } from './api/hooks';
+export {
+  createAlertRuleMutation,
+  createDeleteAlertRuleMutation,
+  createUpdateAlertRuleMutation,
+  OPTIMISTIC_ID_PREFIX,
+} from './api/rule-mutations';
+export type {
+  DeleteAlertRuleVariables,
+  RuleMutationContext,
+  UpdateAlertRuleVariables,
+} from './api/rule-mutations';
 export { setupTelemetryPersistence, telemetryPersistPolicy } from './api/persistence';
 export type { TelemetryPersistenceOptions } from './api/persistence';
