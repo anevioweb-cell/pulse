@@ -165,7 +165,8 @@ export default defineConfig(
   },
 
   {
-    files: TEST_FILES,
+    // Tests and stories use literal demo values (sizes, offsets, counts) by design.
+    files: [...TEST_FILES, '**/*.stories.{ts,tsx}', '.storybook/**'],
     rules: {
       '@typescript-eslint/no-magic-numbers': 'off',
     },
