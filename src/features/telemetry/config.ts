@@ -164,6 +164,85 @@ export const SIMULATOR = {
 } as const;
 
 /* ---------------------------------------------------------------------------------------------- */
+/* REST contract (shared by the mock server, HttpTelemetryApi and DemoTelemetryApi)               */
+/* ---------------------------------------------------------------------------------------------- */
+
+const MS_PER_HOUR = SECONDS_PER_MINUTE * SECONDS_PER_MINUTE * MS_PER_SECOND;
+const HOURS_PER_DAY = 24;
+
+export const API = {
+  /**
+   * Most points a readings response may contain. Charts need about one point per horizontal pixel;
+   * min/max downsampling emits 2 per bucket, so 2000 covers a 1000-bucket chart (wider than most
+   * screens) while keeping responses around 60 KB.
+   */
+  MAX_POINTS: 2000,
+  /** Fewest points a client may ask for: min/max downsampling keeps a minimum and a maximum. */
+  MIN_POINTS: 2,
+  /** Default when the client does not ask: enough for a card-sized sparkline or small chart. */
+  DEFAULT_MAX_POINTS: 500,
+  /**
+   * Longest readings range: 7 days = 60,480 raw samples at the 10 s history resolution, computed
+   * and downsampled in a few milliseconds per request.
+   */
+  MAX_RANGE_MS: 7 * HOURS_PER_DAY * MS_PER_HOUR,
+  /** Alert history evaluates rules once per simulated minute (1,440 checks per device-rule-day). */
+  ALERT_EVAL_STEP_MS: SECONDS_PER_MINUTE * MS_PER_SECOND,
+  /**
+   * Longest alert-history range: 24 h. Worst case (50 rules x 256 devices x 1,440 steps) stays
+   * bounded; the dashboard shows the last day anyway.
+   */
+  MAX_ALERT_RANGE_MS: HOURS_PER_DAY * MS_PER_HOUR,
+  DEFAULT_ALERT_LIMIT: 100,
+  MAX_ALERT_LIMIT: 500,
+  /** Rules per fleet: plenty for a home dashboard, and bounds alert-history cost and memory. */
+  MAX_ALERT_RULES: 50,
+  RULE_NAME_MAX_LENGTH: 64,
+  /** Alert event ids are "<ruleId>.<deviceId>.<ts>": two 64-char ids plus a timestamp. */
+  ALERT_ID_MAX_LENGTH: 160,
+} as const;
+
+/**
+ * TanStack Query freshness per resource (docs/caching.md and ADR 0016 explain each choice).
+ * staleTime: how long data is served without refetching. gcTime: how long unused data stays in
+ * memory (and is eligible for persistence) after the last component stops using it.
+ */
+export const QUERY_POLICY = {
+  /** Fleet membership changes rarely (a device is added or removed by hand). */
+  DEVICES: {
+    STALE_TIME_MS: SECONDS_PER_MINUTE * MS_PER_SECOND,
+    GC_TIME_MS: HOURS_PER_DAY * MS_PER_HOUR,
+  },
+  /** Detail includes the latest reading, which the live stream supersedes anyway. */
+  DEVICE: {
+    STALE_TIME_MS: 30 * MS_PER_SECOND,
+    GC_TIME_MS: 10 * SECONDS_PER_MINUTE * MS_PER_SECOND,
+  },
+  /**
+   * A range entirely in the past never changes: fresh forever. A range touching "now" grows
+   * every sample interval, so it goes stale after 30 s (the live ring buffer covers the gap).
+   */
+  READINGS_PAST: {
+    STALE_TIME_MS: Number.POSITIVE_INFINITY,
+    GC_TIME_MS: 30 * SECONDS_PER_MINUTE * MS_PER_SECOND,
+  },
+  READINGS_RECENT: {
+    STALE_TIME_MS: 30 * MS_PER_SECOND,
+    GC_TIME_MS: 10 * SECONDS_PER_MINUTE * MS_PER_SECOND,
+  },
+  /** New alerts can fire any minute; refetch after 15 s when someone is looking. */
+  ALERTS: {
+    STALE_TIME_MS: 15 * MS_PER_SECOND,
+    GC_TIME_MS: 10 * SECONDS_PER_MINUTE * MS_PER_SECOND,
+  },
+  /** Rules change only through this client's own mutations, which invalidate them (Phase 4B). */
+  ALERT_RULES: {
+    STALE_TIME_MS: 5 * SECONDS_PER_MINUTE * MS_PER_SECOND,
+    GC_TIME_MS: HOURS_PER_DAY * MS_PER_HOUR,
+  },
+} as const;
+
+/* ---------------------------------------------------------------------------------------------- */
 /* Mock server (server/)                                                                          */
 /* ---------------------------------------------------------------------------------------------- */
 
@@ -182,6 +261,26 @@ export const MOCK_SERVER = {
   PROTOCOL_PING_INTERVAL_MS: 30 * MS_PER_SECOND,
   /** On SIGINT/SIGTERM, clients get this long to close cleanly before being terminated. */
   SHUTDOWN_GRACE_MS: 5 * MS_PER_SECOND,
+  /**
+   * Browser origins allowed to call the REST API and open the WebSocket (no wildcard). Defaults
+   * to the Vite dev server; extend with --origin.
+   */
+  ALLOWED_ORIGINS: ['http://localhost:5173', 'http://127.0.0.1:5173'] as readonly string[],
+  /** Browsers may cache a CORS preflight for 10 minutes. */
+  CORS_MAX_AGE_SECONDS: 600,
+  /** Request bodies (alert rules, ~200 B) above 2 KiB are refused with 413 before parsing. */
+  MAX_BODY_BYTES: 2048,
+  /** URLs longer than this are refused with 414: every legitimate path + query is < 200 chars. */
+  MAX_URL_LENGTH: 2048,
+  /**
+   * REST requests per client per second. A dashboard load is ~25 requests (list, 12 details,
+   * 12 readings); 50/s leaves headroom without letting one client monopolize the server.
+   */
+  MAX_REST_REQUESTS_PER_SECOND: 50,
+  /** Distinct clients tracked by the rate limiter; the oldest windows are evicted beyond this. */
+  MAX_RATE_LIMIT_CLIENTS: 1024,
+  /** Fault-injection limits (test-only switch, off by default). */
+  MAX_FAULT_LATENCY_MS: 30 * MS_PER_SECOND,
 } as const;
 
 /* ---------------------------------------------------------------------------------------------- */

@@ -82,3 +82,21 @@ export {
   useSeriesVersion,
   useStatusSummary,
 } from './live';
+
+// Server-state data access (Phase 4A): REST contract, repository interface and implementations.
+export { API, QUERY_POLICY } from './config';
+export * from './api/contract';
+export type { CallOptions, ReadingsRequest, TelemetryApi } from './api/telemetry-api';
+export { HttpTelemetryApi } from './api/http-telemetry-api';
+export type { HttpTelemetryApiOptions } from './api/http-telemetry-api';
+export { DemoTelemetryApi } from './api/demo-telemetry-api';
+export type { DemoTelemetryApiOptions } from './api/demo-telemetry-api';
+export { AlertRuleStore, DEFAULT_ALERT_RULES } from './api/alert-rule-store';
+export type { RuleWriteResult } from './api/alert-rule-store';
+export { SimulatedTelemetryData } from './api/simulated-data';
+export { HistoryModel } from './simulator/history-model';
+export type { HistoryModelOptions, HistorySeries } from './simulator/history-model';
+export { createDeviceProfile } from './simulator/device-profile';
+export type { DeviceProfile } from './simulator/device-profile';
+export { downsampleMinMax } from './history/downsample';
+export type { DownsampleResult } from './history/downsample';
