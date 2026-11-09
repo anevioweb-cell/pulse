@@ -358,3 +358,36 @@ export type Tunable<T> = {
         ? { min: number; max: number }
         : T[K];
 };
+
+/* ---------------------------------------------------------------------------------------------- */
+/* Connectivity and prefetching (Phase 4B)                                                        */
+/* ---------------------------------------------------------------------------------------------- */
+
+export const CONNECTIVITY = {
+  /**
+   * An open live connection with no accepted message for this long is "degraded" (silent). The
+   * same 15 s after which a single device is shown stale: if the whole feed is that quiet, the
+   * connection is up but not delivering.
+   */
+  LIVE_SILENCE_MS: STORE.STALE_AFTER_MS,
+  /** How often the silence rule is re-checked while nothing else changes (like stale status). */
+  CHECK_INTERVAL_MS: STORE.STALE_CHECK_INTERVAL_MS,
+} as const;
+
+export const PREFETCH = {
+  /**
+   * Hover or focus must last this long before prefetching: long enough to skip a pointer that
+   * only crosses a link on its way elsewhere, short enough to finish well before the typical
+   * time from hover to click (a few hundred ms).
+   */
+  INTENT_DELAY_MS: 100,
+  /** The device page's first chart: the last hour (Phase 5 uses the same request). */
+  RECENT_RANGE_MS: MS_PER_HOUR,
+  RECENT_METRIC: 'temperature',
+  /**
+   * The range end is rounded up to this step, so every prefetch and page load within it uses the
+   * same query key (deduplicated). Equal to the recent-range staleTime: a key is reused exactly as
+   * long as its data is fresh.
+   */
+  RANGE_ALIGN_MS: QUERY_POLICY.READINGS.RECENT_STALE_TIME_MS,
+} as const;
