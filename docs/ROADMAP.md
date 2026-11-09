@@ -5,9 +5,15 @@
 - [x] Phase 2: Design system
   - [x] 2A: Tokens, theming, typography
   - [x] 2B: Components and Storybook
-- [ ] Phase 3: Architecture and data flow
+- [x] Phase 3: Architecture and data flow
   - [x] 3A: Telemetry domain model, versioned protocol and parser, transports (WebSocket, simulator Web Worker), mock server, probe CLI, ESP32 firmware sample
-  - [ ] 3B: Ring buffers, Zustand telemetry store, batching, telemetry service wiring
+  - [x] 3B: Live data pipeline
+    - [x] Typed-array ring buffers per device and metric (ADR 0012)
+    - [x] Zustand live store, per-device selectors and hooks (ADR 0013)
+    - [x] Frame-rate batching, hidden-tab and backpressure policy (ADR 0014)
+    - [x] TelemetryService wiring demo and live transports through one parser
+    - [x] End-to-end tests (simulator and mock server), re-render isolation test, measurements
+    - [x] docs/architecture.md data-flow diagram
 - [ ] Phase 4: Caching and offline (TanStack Query, IndexedDB persistence, service worker)
 - [ ] Phase 5: Dashboard features (charts, devices table, alerts, settings)
 - [ ] Phase 6: Performance
