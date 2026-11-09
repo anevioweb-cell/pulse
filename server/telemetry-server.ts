@@ -1,3 +1,5 @@
+import { createServer } from 'node:http';
+
 import { WebSocketServer } from 'ws';
 
 import {
@@ -6,12 +8,18 @@ import {
   MOCK_SERVER,
   parseTelemetryMessage,
   PROTOCOL,
+  AlertRuleStore,
+  HistoryModel,
+  SimulatedTelemetryData,
   SimulationEngine,
   SIMULATOR,
   WEBSOCKET,
 } from '../src/features/telemetry';
+import { RateLimiter } from './rest/rate-limiter';
+import { createRestHandler } from './rest/router';
 
 import type { TelemetryMessage } from '../src/features/telemetry';
+import type { FaultConfig } from './rest/faults';
 import type { AddressInfo } from 'node:net';
 import type { WebSocket } from 'ws';
 
@@ -29,6 +37,14 @@ export interface TelemetryServerOptions {
    * clients. Off by default.
    */
   relay?: boolean;
+  /** Browser origins allowed for REST (CORS) and WebSocket upgrades. Defaults to the Vite dev server. */
+  allowedOrigins?: readonly string[];
+  /** Test-only REST fault injection. Off (null) by default. */
+  faults?: FaultConfig | null;
+  /** Random source for fault injection. */
+  random?: () => number;
+  /** Clock for REST data (history never goes past "now"). */
+  now?: () => number;
   log?: (line: string) => void;
 }
 
@@ -43,7 +59,10 @@ export interface TelemetryServerStats {
 }
 
 export interface TelemetryServer {
+  /** WebSocket URL of the telemetry stream. */
   readonly url: string;
+  /** Base URL of the REST API (same host and port). */
+  readonly httpUrl: string;
   readonly port: number;
   readonly clientCount: number;
   readonly stats: Readonly<TelemetryServerStats>;
@@ -70,6 +89,10 @@ export async function startTelemetryServer({
   deviceCount = SIMULATOR.DEFAULT_DEVICE_COUNT,
   rateHz = SIMULATOR.DEFAULT_RATE_HZ,
   relay = false,
+  allowedOrigins = MOCK_SERVER.ALLOWED_ORIGINS,
+  faults = null,
+  random = Math.random,
+  now = () => Date.now(),
   log = () => undefined,
 }: TelemetryServerOptions = {}): Promise<TelemetryServer> {
   const engine = new SimulationEngine({ startTime: Date.now(), seed, deviceCount, rateHz });
@@ -84,20 +107,44 @@ export async function startTelemetryServer({
     relayed: 0,
   };
 
+  const origins = new Set(allowedOrigins);
+  const rules = new AlertRuleStore();
+  const rest = createRestHandler({
+    data: new SimulatedTelemetryData({
+      model: new HistoryModel({ seed, deviceCount }),
+      rules,
+      now,
+    }),
+    rules,
+    allowedOrigins: origins,
+    limiter: new RateLimiter(),
+    faults,
+    random,
+    log,
+  });
+  if (faults) log(`REST fault injection ENABLED: ${JSON.stringify(faults)}`);
+
+  // One HTTP server: REST under /api/, WebSocket upgrades on the same port.
+  const httpServer = createServer((request, response) => {
+    void rest(request, response);
+  });
   const wss = new WebSocketServer({
-    host,
-    port,
+    server: httpServer,
     // Frames above the protocol limit are refused by ws itself (close 1009).
     maxPayload: PROTOCOL.MAX_FRAME_BYTES,
     // No compression: avoids decompression bombs and CPU cost; telemetry frames are tiny.
     perMessageDeflate: false,
+    // Browsers do not apply CORS to WebSockets: check Origin to stop cross-site WebSocket
+    // hijacking. Clients without an Origin (devices, Node tools) are not browsers.
+    verifyClient: ({ origin }: { origin?: string }) => !origin || origins.has(origin),
   });
 
   await new Promise<void>((resolve, reject) => {
-    wss.once('listening', resolve);
-    wss.once('error', reject);
+    httpServer.once('listening', resolve);
+    httpServer.once('error', reject);
+    httpServer.listen(port, host);
   });
-  const address = wss.address() as AddressInfo;
+  const address = httpServer.address() as AddressInfo;
 
   const sendFrames = (socket: WebSocket, frames: readonly string[]) => {
     for (const frame of frames) {
@@ -203,24 +250,29 @@ export async function startTelemetryServer({
       clearInterval(reaper);
       // Stop accepting connections first, so reconnecting clients cannot prolong the shutdown.
       const stopped = new Promise<void>((resolve) => {
-        wss.close(() => {
+        httpServer.close(() => {
           resolve();
         });
       });
+      wss.close();
       for (const socket of clients.keys()) socket.close(CLOSE_CODES.GOING_AWAY, 'server shutdown');
       const deadline = Date.now() + MOCK_SERVER.SHUTDOWN_GRACE_MS;
       while (clients.size > 0 && Date.now() < deadline) {
         await new Promise((resolve) => setTimeout(resolve, SIMULATOR.TICK_MS));
       }
       for (const socket of clients.keys()) socket.terminate();
+      httpServer.closeAllConnections();
       await stopped;
     })();
     return closing;
   };
 
-  const url = `ws://${address.address.includes(':') ? `[${address.address}]` : address.address}:${String(address.port)}`;
+  const hostPart = address.address.includes(':') ? `[${address.address}]` : address.address;
+  const authority = `${hostPart}:${String(address.port)}`;
+  const url = `ws://${authority}`;
   return {
     url,
+    httpUrl: `http://${authority}`,
     port: address.port,
     get clientCount() {
       return clients.size;
