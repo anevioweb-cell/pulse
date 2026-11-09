@@ -25,7 +25,7 @@ Telemetry arrives in bursts and at rates that can exceed the display's frame rat
 ## Alternatives considered
 
 - **Publish per message.** Simplest, but wasteful: hundreds of renders per second that the screen cannot show. Measured: one publish per message lowers 12-device throughput from 184k to 138k messages per second before any React work.
-- **Throttle by time (`setTimeout`, every 100 ms).** Not aligned with paint, so it either lags behind the display or wastes publishes. Timers also keep running in hidden tabs (clamped to 1 per second) and do pointless work.
+- **Throttle by time (`setTimeout`, every 100 ms).** Not aligned with paint, so it either lags behind the display or wastes publishes. Browsers throttle timers in hidden tabs rather than stopping them, so they would keep doing pointless work.
 - **Queue messages and process them per frame.** Moves the parsing cost into the frame (jank at high rates), and the queue grows without bound while the tab is hidden, which is exactly the failure this ADR exists to prevent.
 - **Drop messages when overloaded.** Loses history. With 5.6 µs per message, the client can ingest about 178k messages per second, so the transport rate limit (200 per second by default) is the right place to shed load. Drops there are counted.
 - **A worker-side store with snapshots posted per frame.** Moves parsing off the main thread, but adds copying and complexity. Reconsider in Phase 6 if browser measurements show main-thread pressure.

@@ -24,7 +24,7 @@ Server state (device registry, history, settings over REST, Phase 4) has differe
 
 - **Redux Toolkit.**
   - Pros: mature, great devtools, `createSelector` memoization.
-  - Cons: more ceremony (slices, actions, dispatch) for a store with exactly one writer and no reducers worth naming. It is also larger than Zustand (about 1 kB gzip for the parts used here). Live updates do not benefit from Redux's action log.
+  - Cons: more ceremony (slices, actions, dispatch) for a store with exactly one writer and no reducers worth naming. It also ships more code; its size was not measured here, because the API mismatch already decided the question. Live updates do not benefit from Redux's action log.
 - **Jotai.**
   - Pros: fine-grained atoms, natural per-device subscriptions.
   - Cons: atoms are React-first (writing from the service needs a store reference anyway), and a family of per-device atoms is more machinery than one store with per-device selectors.
@@ -33,7 +33,7 @@ Server state (device registry, history, settings over REST, Phase 4) has differe
   - Cons: React integration relies on non-standard hooks or compiler transforms, and it is less familiar to reviewers.
 - **`useSyncExternalStore` with a custom store.**
   - Pros: no dependency at all (the Toast store does exactly this, ADR 0007).
-  - Cons: for the live store we would rewrite selector support, `useShallow`-style equality and the vanilla/React split that Zustand already provides in about 1 kB, with tests. The Toast store has one consumer and needs none of that.
+  - Cons: for the live store we would rewrite selector support, `useShallow`-style equality and the vanilla/React split that Zustand already provides. The Zustand pieces used here (`createStore`, `useStore`, `useShallow`) measure 1,386 B minified / 701 B gzip (esbuild 0.28.2, React external). The Toast store has one consumer and needs none of that.
 - **React Context plus `useReducer`.** Every consumer re-renders on every publish. This was rejected in ADR 0001.
 
 ## Consequences
