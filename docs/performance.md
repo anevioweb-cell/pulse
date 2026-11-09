@@ -204,3 +204,186 @@ A 60 fps frame budget is 16.7 ms, so even 200 changing devices use about 0.1 % o
 - **CSS:** Tailwind scans source text. A class-list diff against the pre-3B build (built in a separate `git worktree`) showed two new classes:
   - `.static`, from `static instances` in the test fakes. Fixed: `testing/` folders are now excluded from Tailwind's sources, like tests and stories.
   - `.contents`, from the word "contents" in a comment in `store/selectors.ts`. Kept; it is harmless.
+
+## Phase 4A: data-access layer
+
+All figures were measured on the same machine as the earlier sections: AMD Ryzen 5 8500G (12 threads), 6 GB RAM, Node 24.21.0, with a desktop session running. Each table names its method. Runs on this machine vary by up to about 2× between invocations, so two invocations are reported where they differed.
+
+### Downsampling throughput
+
+`npm run bench:downsample` (`scripts/bench/downsample.ts`):
+
+- **Input:** a synthetic sorted series (1 s spacing, noisy sine) as `Float64Array`s.
+- **Runs:** one untimed warm-up call per case, then 21 timed runs. Each run calls `downsampleMinMax` enough times to process at least 1,000,000 input points, so small inputs are not lost in timer resolution.
+- **Reported:** the median per-call time, and throughput = input points ÷ that time. Two invocations, first / second.
+
+| Input points | maxPoints | Median per call (ms) | Points per second |
+| -----------: | --------: | -------------------: | ----------------- |
+|       10,000 |       100 |        0.014 / 0.013 | 691 M / 771 M     |
+|       10,000 |       500 |        0.015 / 0.015 | 653 M / 654 M     |
+|       10,000 |      2000 |        0.030 / 0.031 | 332 M / 326 M     |
+|      100,000 |       100 |        0.124 / 0.124 | 808 M / 807 M     |
+|      100,000 |       500 |        0.154 / 0.154 | 651 M / 648 M     |
+|      100,000 |      2000 |        0.193 / 0.209 | 517 M / 479 M     |
+|    1,000,000 |       100 |        1.207 / 1.234 | 828 M / 811 M     |
+|    1,000,000 |       500 |        1.289 / 1.313 | 776 M / 762 M     |
+|    1,000,000 |      2000 |        1.486 / 1.580 | 673 M / 633 M     |
+
+Downsampling a 7-day range (60,481 samples) therefore costs about 0.1 ms (interpolated from the table). The whole Demo Mode readings request for a 7-day range at 2000 points takes a median of 7.5 ms over 11 calls (generating the samples with `HistoryModel` dominates), measured once with a throwaway script.
+
+### Mock server REST latency (localhost)
+
+`npm run bench:rest` (`scripts/bench/rest-latency.ts`):
+
+- **Server:** the mock server runs as a separate Node process (`server/index.ts --seed 7`, so it has its own event loop), on 127.0.0.1.
+- **Client:** Node `fetch` (keep-alive). Latency is the time from `fetch()` to the full body being read.
+- **Requests:** per row, 20 untimed warm-up requests, then 400 timed requests, sent in bursts of _concurrency_ simultaneous requests.
+- **Pacing:** bursts are paced to at most 40 requests per second, below the server's limit of 50 per second per client. No request got a 429 (the script fails on any non-200), and pacing time is not counted.
+- **Reported:** p50 and p95 (nearest rank). Two invocations, first / second.
+
+| Endpoint                                                                | Response size | Concurrency | Requests | p50 (ms)    | p95 (ms)      |
+| ----------------------------------------------------------------------- | ------------- | ----------: | -------: | ----------- | ------------- |
+| `GET /api/devices` (12 devices)                                         | 1,199 B       |           1 |      400 | 0.88 / 0.91 | 1.10 / 1.18   |
+| `GET /api/devices`                                                      | 1,199 B       |           8 |      400 | 1.17 / 1.13 | 1.75 / 1.64   |
+| `GET /api/devices/esp32-01/readings` (24 h, temperature, maxPoints=500) | 10,068 B      |           1 |      400 | 2.56 / 2.48 | 3.14 / 2.95   |
+| same readings query                                                     | 10,068 B      |           8 |      400 | 7.18 / 6.91 | 12.53 / 11.75 |
+
+A 24 h readings request computes 8,641 samples (10 s resolution, both ends included) and downsamples them on every call. The server does not cache, so with 8 in flight the requests queue on its single thread. That is fine for a dev tool. The rate limit, not CPU, bounds what one client can ask for.
+
+### Persistence read and write (Chromium, real IndexedDB)
+
+`npm run bench:persistence`, then open the printed URL (`scripts/bench/persistence/`). It runs in the desktop app's built-in Chromium 152, where `performance.now()` is coarsened to 0.1 ms.
+
+- **Typical cache:** device list, alert rules, and the last hour of temperature for each of the 12 devices (14 queries).
+- **Near the cap:** the typical cache plus 24 h ranges at 2000 points for every device and metric (74 queries). The serializer stops at the 1 MiB cap after 38 entries (995.4 KiB).
+- **Write:** `serializeQueryCache` (filter, sort, cap, JSON) + IndexedDB `set`, that is one debounced persist.
+- **Read:** `restoreQueryCache` into an empty QueryClient: IndexedDB `get`, size check, safe JSON parse, migration check, schema validation of every entry, `setQueryData`.
+- **Runs:** one warm-up, then 25 timed runs of each. p50 / p95.
+
+| Cache                              | Stored size | Write p50 / p95 (ms)         | Read p50 / p95 (ms)          |
+| ---------------------------------- | ----------- | ---------------------------- | ---------------------------- |
+| Typical (14 entries)               | 90.6 KiB    | 1.4 / 3.0, and 1.6 / 4.4     | 3.1 / 5.0, and 4.1 / 6.5     |
+| Near the cap (38 entries)          | 995.4 KiB   | 12.0 / 13.2, and 13.5 / 28.1 | 32.5 / 38.4, and 64.7 / 81.6 |
+| Near the cap, before the fix below | 995.4 KiB   | 90.8 / 105.7                 | 31.7 / 36.6                  |
+
+**Fix made while measuring.** `serializeQueryCache` re-stringified the whole record after adding each entry, to check the byte cap. That made a write near the cap quadratic: 38 entries meant about 19 MB of JSON work. It now adds each entry's byte length (plus one comma) to a running total. The output is identical (same 38 entries, same bytes), and a test pins the exact byte boundary. The near-cap write went from 90.8 ms to 12.0 ms (p50). Reads were unaffected. They are dominated by schema validation of every point, and their spread between invocations (32 to 65 ms) is machine noise, not code.
+
+### Smoke test against the running server
+
+Server started with `npm run server -- --port 8788` (defaults: seed 20,261,109, 12 devices, allowed origins `http://localhost:5173` and `http://127.0.0.1:5173`). Commands and full output:
+
+**1. Valid request** (allowed origin, 10-minute range, 4 points):
+
+```
+$ curl -sS -i 'http://127.0.0.1:8788/api/devices/esp32-01/readings?metric=temperature&from=1794254194254&to=1794254794256&maxPoints=4' -H 'Origin: http://localhost:5173'
+HTTP/1.1 200 OK
+Access-Control-Allow-Origin: http://localhost:5173
+Vary: Origin
+Content-Type: application/json; charset=utf-8
+X-Content-Type-Options: nosniff
+Cache-Control: no-store
+Content-Security-Policy: default-src 'none'; frame-ancestors 'none'
+Referrer-Policy: no-referrer
+Content-Length: 320
+Date: Mon, 09 Nov 2026 20:06:34 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"deviceId":"esp32-01","metric":"temperature","from":1794254194254,"to":1794254794256,"source":"simulated","resolution":{"method":"min-max","sampleIntervalMs":10000,"bucketSize":30,"rawCount":60,"returnedCount":4},"timestamps":[1794254200000,1794254370000,1794254500000,1794254670000],"values":[21.77,26.02,23.65,19.74]}
+```
+
+**2. Invalid query parameters** (unknown metric, `from` below the minimum timestamp, `to` not a number):
+
+```
+$ curl -sS -i 'http://127.0.0.1:8788/api/devices/esp32-01/readings?metric=co2&from=1&to=yesterday' -H 'Origin: http://localhost:5173'
+HTTP/1.1 400 Bad Request
+Access-Control-Allow-Origin: http://localhost:5173
+Vary: Origin
+Content-Type: application/json; charset=utf-8
+X-Content-Type-Options: nosniff
+Cache-Control: no-store
+Content-Security-Policy: default-src 'none'; frame-ancestors 'none'
+Referrer-Policy: no-referrer
+Content-Length: 183
+Date: Mon, 09 Nov 2026 20:06:34 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"error":{"code":"bad_request","message":"Invalid request","issues":[{"path":"from","code":"too_small"},{"path":"to","code":"invalid_type"},{"path":"metric","code":"invalid_value"}]}}
+```
+
+**3. Disallowed origin, REST** (refused before routing, no CORS headers):
+
+```
+$ curl -sS -i http://127.0.0.1:8788/api/devices -H 'Origin: https://evil.example'
+HTTP/1.1 403 Forbidden
+Content-Type: application/json; charset=utf-8
+X-Content-Type-Options: nosniff
+Cache-Control: no-store
+Content-Security-Policy: default-src 'none'; frame-ancestors 'none'
+Referrer-Policy: no-referrer
+Content-Length: 68
+Date: Mon, 09 Nov 2026 20:06:34 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"error":{"code":"forbidden_origin","message":"Origin not allowed"}}
+```
+
+**4. WebSocket upgrade with a disallowed Origin**, then the same upgrade from an allowed origin as a control:
+
+```
+$ curl -sS -i --http1.1 http://127.0.0.1:8788/ -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' -H 'Origin: https://evil.example' --max-time 3
+HTTP/1.1 401 Unauthorized
+Connection: close
+Content-Type: text/html
+Content-Length: 12
+
+Unauthorized
+
+$ curl -sS -i --http1.1 http://127.0.0.1:8788/ -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' -H 'Origin: http://localhost:5173' --max-time 2
+HTTP/1.1 101 Switching Protocols
+Upgrade: websocket
+Connection: Upgrade
+Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
+```
+
+The 401 body is written by the `ws` library (`verifyClient` returning false), not by Pulse, which is why it is `text/html` without the JSON envelope.
+
+### Query devtools are absent from production
+
+`src/app/query-devtools.tsx` imports `@tanstack/react-query-devtools` only inside an `import.meta.env.DEV` branch. That constant is `false` in a production build, so the dynamic import is dead code. After `npm run build`:
+
+```
+$ ls dist/assets
+index-8_WYCBUh.js  index-nqkatVR7.css  inter-latin-wght-normal-Dx4kXJAl.woff2  jetbrains-mono-latin-wght-normal-B9CIFXIH.woff2  vazirmatn-arabic-wght-normal-Cafbb7Zc.woff2
+$ grep -rl "react-query-devtools" dist; echo "exit=$?"
+exit=1
+$ grep -rlE "ReactQueryDevtools|TanstackQueryDevtools|query-devtools|tsqd-" dist; echo "exit=$?"
+exit=1
+$ grep -rlE "Open Tanstack query devtools|Close tanstack query devtools" dist; echo "exit=$?"
+exit=1
+```
+
+- **No output:** no file matches the package name, the component names, the devtools CSS class prefix (`tsqd-`) or the devtools' UI strings, and no extra chunk is emitted.
+- **Positive control:** the same grep on a `--mode development` build finds three files, including a separate `DevtoolsComponent-*.js` chunk, so an empty result means "absent", not "grep is wrong".
+- **Sanity check:** TanStack Query core is present in the production bundle (`gcTime` appears 7 times, `queryHash` 15 times).
+
+### Production app bundle
+
+| Asset | End of Phase 3B         | End of Phase 4A         | Delta (gzip) |
+| ----- | ----------------------- | ----------------------- | ------------ |
+| JS    | 229.82 kB / 72.18 kB gz | 256.36 kB / 79.84 kB gz | +7.66 kB     |
+| CSS   | 31.09 kB / 7.07 kB gz   | 31.09 kB / 7.07 kB gz   | 0            |
+
+What the app imports now:
+
+- **New in 4A:** `main.tsx` wraps the app in `AppProviders`, which creates the QueryClient (`createQueryClient`: retry policy, `ApiError`, query defaults) and renders `QueryClientProvider`. That is the whole JS delta: TanStack Query's client, cache and provider. No dashboard UI uses them yet.
+- **Not in `dist/` yet:**
+  - the telemetry feature (both `TelemetryApi` implementations, hooks, query keys and policies, the simulator, the Zustand store);
+  - the fetch wrapper;
+  - the persistence code and `idb-keyval`.
+
+  `grep` finds no `keyval-store`, `telemetry-rest-v1`, `esp32` or `Request timed out` in the bundle. Phase 5 wires them in, and their cost is measured there.
+
+- **Unchanged:** Zod is in the bundle as before 3B ended, for the theme's `localStorage` validation.
