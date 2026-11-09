@@ -7,8 +7,10 @@ import { HTTP } from './config';
  * - `validation`: the response was not what the contract says (wrong content type, oversized,
  *   invalid JSON, schema violation). Never retried: retrying will not fix a contract mismatch.
  * - `aborted`: the caller cancelled (component unmounted, query superseded).
+ * - `offline`: the browser reports no connectivity, so the request was never sent. Used by
+ *   mutations, which fail fast instead of waiting paused (ADR 0019). Never retried.
  */
-export type ApiErrorKind = 'network' | 'timeout' | 'http' | 'validation' | 'aborted';
+export type ApiErrorKind = 'network' | 'timeout' | 'http' | 'validation' | 'aborted' | 'offline';
 
 export interface ApiIssue {
   readonly path: string;
