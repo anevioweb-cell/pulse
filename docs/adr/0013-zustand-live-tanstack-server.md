@@ -32,7 +32,7 @@ Server state (device registry, history, settings over REST, Phase 4) has differe
   - Pros: excellent fine-grained updates.
   - Cons: React integration relies on non-standard hooks or compiler transforms, and it is less familiar to reviewers.
 - **`useSyncExternalStore` with a custom store.**
-  - Pros: no dependency at all (the Toast store does exactly this, ADR 0007).
+  - Pros: no dependency at all (the Toast store does exactly this, ADR 0008).
   - Cons: for the live store we would rewrite selector support, `useShallow`-style equality and the vanilla/React split that Zustand already provides. The Zustand pieces used here (`createStore`, `useStore`, `useShallow`) measure 1,386 B minified / 701 B gzip (esbuild 0.28.2, React external). The Toast store has one consumer and needs none of that.
 - **React Context plus `useReducer`.** Every consumer re-renders on every publish. This was rejected in ADR 0001.
 
