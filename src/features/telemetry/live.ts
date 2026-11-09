@@ -18,6 +18,7 @@ export const useLiveDevice = liveHooks.useDevice;
 export const useLiveDeviceIds = liveHooks.useDeviceIds;
 export const useLiveConnection = liveHooks.useConnection;
 export const useLiveMode = liveHooks.useMode;
+export const useLiveLastMessageAt = liveHooks.useLastMessageAt;
 export const useLiveCounters = liveHooks.useCounters;
 export const useLiveStatusSummary = liveHooks.useStatusSummary;
 export const useLiveSeriesVersion = liveHooks.useSeriesVersion;

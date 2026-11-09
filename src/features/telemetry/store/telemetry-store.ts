@@ -79,6 +79,11 @@ export interface TelemetryState {
   readonly counters: TelemetryCounters;
   /** Clock time of the last publish. */
   readonly publishedAt: number | null;
+  /**
+   * Clock time of the last accepted (valid) message from the transport, or null if none yet in
+   * this session. Feeds the connectivity model and the "last updated" label of live data.
+   */
+  readonly lastMessageAt: number | null;
 }
 
 export type TelemetryStore = StoreApi<TelemetryState>;
@@ -109,6 +114,7 @@ export const initialTelemetryState = (): TelemetryState => ({
   deviceIds: [],
   counters: emptyCounters(),
   publishedAt: null,
+  lastMessageAt: null,
 });
 
 /**

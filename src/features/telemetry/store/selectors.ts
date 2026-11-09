@@ -19,6 +19,7 @@ export const selectDevice =
 export const selectDeviceIds = (state: TelemetryState) => state.deviceIds;
 export const selectConnection = (state: TelemetryState) => state.connection;
 export const selectMode = (state: TelemetryState) => state.mode;
+export const selectLastMessageAt = (state: TelemetryState) => state.lastMessageAt;
 export const selectCounters = (state: TelemetryState) => state.counters;
 export const selectSeriesVersion =
   (id: DeviceId) =>
@@ -48,6 +49,8 @@ export function createTelemetryHooks(store: TelemetryStore) {
     useDeviceIds: () => useStore(store, selectDeviceIds),
     useConnection: () => useStore(store, selectConnection),
     useMode: () => useStore(store, selectMode),
+    /** Time of the last accepted live message. Changes on most publishes. */
+    useLastMessageAt: () => useStore(store, selectLastMessageAt),
     /** Diagnostics counters. Changes on most publishes: use only in diagnostics views. */
     useCounters: () => useStore(store, selectCounters),
     /** Online/stale/offline counts, shallow-compared so it re-renders only when a count changes. */

@@ -60,6 +60,7 @@ export class TelemetryIngestor {
   private rejectedDevices = 0;
   private coalescedUpdates = 0;
   private publishes = 0;
+  private lastMessageAt: number | null = null;
   private connection: ConnectionStatus = { state: 'idle', attempt: 0 };
   private transportStats: TransportStats = emptyStats();
   private membershipChanged = false;
@@ -81,6 +82,7 @@ export class TelemetryIngestor {
       return;
     }
     this.messagesAccepted += 1;
+    this.lastMessageAt = this.now();
     this.apply(result.message);
   }
 
@@ -141,6 +143,7 @@ export class TelemetryIngestor {
         : previous.deviceIds,
       counters: this.snapshotCounters(),
       publishedAt: now,
+      lastMessageAt: this.lastMessageAt,
     };
     this.membershipChanged = false;
     this.countersChanged = false;
