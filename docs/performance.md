@@ -387,3 +387,76 @@ What the app imports now:
   `grep` finds no `keyval-store`, `telemetry-rest-v1`, `esp32` or `Request timed out` in the bundle. Phase 5 wires them in, and their cost is measured there.
 
 - **Unchanged:** Zod is in the bundle as before 3B ended, for the theme's `localStorage` validation.
+
+## Phase 4B: service worker, banners, connectivity
+
+**Method:** `npm run build` (Vite 8 production build), with gzip sizes as reported by Vite. Intermediate commits were built in a separate `git worktree` with the same command. `sw.js` is not reported by Vite: it was compressed with Python's `gzip` at level 9.
+
+### Production bundle vs the end of 4A
+
+| Build                                                                      | Main JS (gzip) | CSS (gzip)  | Delta (main JS gzip) |
+| -------------------------------------------------------------------------- | -------------- | ----------- | -------------------- |
+| End of 4A (`85f4150`)                                                      | 79.84 kB       | 7.07 kB     | n/a                  |
+| Demo rules, optimistic mutations, prefetch, connectivity, i18n (`b7877a9`) | 79.84 kB       | 7.07 kB     | 0                    |
+| Status banners mounted in `AppProviders` (`04db4c8`)                       | 98.52 kB       | 7.23 kB     | +18.68 kB            |
+| Service worker and manifest config (`7d55882`)                             | 98.52 kB       | 7.23 kB     | 0                    |
+| Service worker registration in `main.tsx` (`42cfc2d`, end of 4B)           | **99.40 kB**   | **7.23 kB** | +0.88 kB             |
+
+Raw sizes at the end of 4B: main JS 315.28 kB, CSS 31.85 kB.
+
+**What the main bundle now imports, and what it does not:**
+
+- **The +18.68 kB step** is the first real UI in the app.
+  - The shared component base: `cn()` (`clsx` + `tailwind-merge`) and `class-variance-authority`. Phase 2 measured it at about 9.4 kB.
+  - Banner and Button, with `react-slot`, Spinner and four lucide status icons.
+  - The connectivity model, with the live telemetry store (zustand) and the telemetry schemas it needs, and the messages module.
+  - A visualizer treemap (`npm run analyze`, per-module gzip before minification, which ranks modules but overstates them) shows `tailwind-merge` at 11.76 kB, lucide-react at 4.91 kB and `src/features/telemetry` at 4.81 kB. Of the telemetry code, the largest module is `connectivity.ts` at 1.12 kB. `zustand` is 1.37 kB and `@radix-ui/react-slot` 1.83 kB.
+- **Still not in the main bundle:** `TelemetryService`, the transports and the simulator; both `TelemetryApi` implementations, the hooks and the mutations; persistence (`idb-keyval`); the fetch wrapper. The `@__PURE__` service instance in `live.ts` is dropped, because nothing imports it.
+
+### Service worker and registration cost
+
+| File                                                                                     | Raw      | Gzip                        | When it loads                                      |
+| ---------------------------------------------------------------------------------------- | -------- | --------------------------- | -------------------------------------------------- |
+| `sw.js` (Workbox inlined)                                                                | 15,999 B | 5,712 B (gzip -9)           | Installed by the browser; never part of page loads |
+| `assets/virtual_pwa-register-*.js` (vite-plugin-pwa client)                              | 1.12 kB  | 0.60 kB                     | Lazily, after the first render                     |
+| `assets/workbox-window.prod.es5-*.js`                                                    | 5.65 kB  | 2.20 kB                     | Lazily, after the first render                     |
+| Registration code in the main chunk (`register.ts`, update store, dynamic-import helper) | n/a      | +0.88 kB (main-chunk delta) | With the app                                       |
+
+The PWA's cost on the page is therefore 0.88 kB in the main chunk, plus 2.80 kB gzip loaded after the first render. `sw.js` is a separate file.
+
+### Precache
+
+vite-plugin-pwa reports **15 entries, 526.64 KiB** (raw, uncompressed). Listed in the generated `sw.js`, largest first:
+
+- main JS 315,284 B;
+- fonts: Inter 48,256 B, Vazirmatn (Arabic) 46,308 B and JetBrains Mono 40,404 B;
+- CSS 31,858 B;
+- icons 23,463 + 12,743 + 8,226 + 3,826 B;
+- workbox-window 5,653 B and the register chunk 1,127 B;
+- `index.html` 990 B, `theme-init.js` 785 B and `favicon.svg` 361 B.
+
+With `manifest.webmanifest` (554 B) the files add up to 527.19 KiB; the plugin's figure leaves the manifest out. Over the wire the first-install download is smaller when the server compresses JS and CSS.
+
+### New components
+
+Same method as the component cost table above, but against the end-of-4A app (79.84 kB, which already includes TanStack Query), with each component folder kept alive in a throwaway worktree:
+
+| Component       | App + component | Delta vs 79.84 kB | Notes                                                                                      |
+| --------------- | --------------- | ----------------- | ------------------------------------------------------------------------------------------ |
+| Banner          | 91.33 kB        | +11.49 kB         | About 9.4 kB is the shared `cn()`/`cva` base; the rest is the four status icons and markup |
+| StatusIndicator | 89.62 kB        | +9.78 kB          | Almost all shared base: no icons, no dependencies                                          |
+| Both            | 91.59 kB        | +11.75 kB         |                                                                                            |
+
+## Phase 6 candidates
+
+Measured costs worth revisiting in Phase 6, each with its possible mitigation:
+
+- **Persistence read near the cap: 32 to 65 ms (p50) in Chromium** for a 995 KiB cache (Phase 4A). It runs once at startup, on the main thread, and is dominated by schema validation of every point.
+  - Validate lazily, per entry, when a query is first observed rather than all at restore.
+  - Lower `PERSISTENCE.MAX_BYTES`. Most of the near-cap record is 2000-point readings that are cheap to refetch.
+  - Move restore (parse and validate) to a worker and hand over validated data.
+  - Persist readings in a compact numeric form (typed arrays or deltas) that validates faster than JSON arrays of numbers.
+- **Persistence write near the cap: 12 to 14 ms (p50)**, debounced to at most once per settled second. It could move to a worker with the restore.
+- **Main bundle 99.40 kB gzip.** After React, the largest dependencies in the treemap are `@tanstack/query-core` (14.30 kB), `tailwind-merge` (11.76 kB) and `zod` (11.52 kB). Options for `tailwind-merge`: a smaller `cn()` without class merging for components that never take conflicting classes, or code-splitting the status banners so they load after the first render.
+- **The Arabic font (46 KB) is precached for every user.** The precache could exclude it and let it load on demand. RTL would then need a network on its first offline use.
+- **Demo readings on the main thread:** a 7-day readings request takes about 7.5 ms in Node (Phase 4A). Measure it in browsers, and move it to the simulator worker if needed.

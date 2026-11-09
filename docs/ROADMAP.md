@@ -14,7 +14,7 @@
     - [x] TelemetryService wiring demo and live transports through one parser
     - [x] End-to-end tests (simulator and mock server), re-render isolation test, measurements
     - [x] docs/architecture.md data-flow diagram
-- [ ] Phase 4: Caching and offline
+- [x] Phase 4: Caching and offline
   - [x] 4A: Data-access layer (repository with HTTP and Demo implementations), mock server REST endpoints, TanStack Query keys and cache policy, IndexedDB persistence
     - [x] `TelemetryApi` with `HttpTelemetryApi` and `DemoTelemetryApi`, one contract suite proving parity against the real mock server (ADR 0015)
     - [x] Hardened mock server REST API: validation, caps, CORS allowlist, WebSocket Origin check, rate limit, opt-in fault injection ([security.md](security.md#rest-input))
@@ -22,18 +22,18 @@
     - [x] IndexedDB persistence with validation, migrations and per-mode namespaces (ADR 0017)
     - [x] QueryClient provider, Query devtools in development only (proven absent from production)
     - [x] Benchmarks and smoke test ([performance.md](performance.md#phase-4a-data-access-layer))
-  - [ ] 4B: Optimistic updates, prefetching, service worker / PWA, offline banner
-    - [ ] Demo alert rules persisted in IndexedDB as the source of truth in Demo Mode (ADR 0018)
-    - [ ] Optimistic alert-rule mutations with exact rollback, no retries, no offline queue (ADR 0019)
-    - [ ] Hover/focus prefetching of device detail and recent readings
-    - [ ] Connectivity model (online, offline, degraded, unknown) and "last updated" times
-    - [ ] Shared Banner and StatusIndicator components, OfflineBanner and UpdateAvailableBanner
-    - [ ] Service worker and web app manifest with a user-driven update flow (ADR 0020)
-    - [ ] Measurements and documentation (caching, security, performance)
+  - [x] 4B: Optimistic updates, prefetching, service worker / PWA, offline banner
+    - [x] Demo alert rules persisted in IndexedDB as the source of truth in Demo Mode (ADR 0018)
+    - [x] Optimistic alert-rule mutations with exact rollback, no retries, no offline queue (ADR 0019)
+    - [x] Hover/focus prefetching of device detail and recent readings
+    - [x] Connectivity model (online, offline, degraded, unknown) and "last updated" times
+    - [x] Shared Banner and StatusIndicator components, OfflineBanner and UpdateAvailableBanner
+    - [x] Service worker and web app manifest with a user-driven update flow (ADR 0020)
+    - [x] Measurements and documentation ([caching.md](caching.md), [security.md](security.md#service-worker), [performance.md](performance.md#phase-4b-service-worker-banners-connectivity))
 - [ ] Phase 5: Dashboard features (charts, devices table, alerts, settings)
 - [ ] Phase 6: Performance
 - [ ] Phase 7: Security (threat model, CSP, XSS hardening)
-  - Note: CI must run `npm audit --omit=dev` (production dependencies only). The current 11 moderate findings are all dev-only: a `minimatch` advisory inside `typescript-eslint` (see [ADR 0002](adr/0002-tooling-versions-and-import-boundaries.md)) and a `glob` advisory inside Storybook's docgen plugin. Runtime-injected styles that affect the CSP are listed in [security.md](security.md).
+  - Note: CI must run `npm audit --omit=dev` (production dependencies only). The full audit currently reports 15 findings (13 moderate, 2 low), all in dev or build-time packages: a `minimatch` advisory inside `typescript-eslint` (see [ADR 0002](adr/0002-tooling-versions-and-import-boundaries.md)), a `glob` advisory inside Storybook's docgen plugin, and, since Phase 4B, `glob` and `deepmerge` (through `@rollup/plugin-node-resolve`) inside `workbox-build`, which vite-plugin-pwa runs only during `vite build`, on the project's own config and build output. Runtime-injected styles that affect the CSP are listed in [security.md](security.md).
 - [ ] Phase 8: Accessibility and i18n (EN/FR/AR with RTL)
 - [ ] Phase 9: Testing
 - [ ] Phase 10: CI/CD and deployment
