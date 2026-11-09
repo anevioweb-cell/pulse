@@ -357,6 +357,38 @@ describe('safety limits', () => {
     expect(messages.at(-1)).toBe('next window');
   });
 
+  it('accepts a per-instance rate limit and keeps the default otherwise', () => {
+    const raised = WEBSOCKET.MAX_MESSAGES_PER_SECOND * 5;
+    const transport = new WebSocketTransport({
+      url: URL_OK,
+      WebSocketImpl: FakeWebSocket,
+      maxMessagesPerSecond: raised,
+    });
+    const received: string[] = [];
+    transport.onMessage((raw) => received.push(raw));
+    transport.connect();
+    const socket = FakeWebSocket.latest();
+    socket.serverOpens();
+    for (let index = 0; index < raised + 1; index += 1) socket.serverSends('m');
+
+    expect(received).toHaveLength(raised);
+    expect(transport.getStats().droppedRateLimited).toBe(1);
+  });
+
+  it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
+    'rejects an invalid per-instance rate limit (%s)',
+    (maxMessagesPerSecond) => {
+      expect(
+        () =>
+          new WebSocketTransport({
+            url: URL_OK,
+            WebSocketImpl: FakeWebSocket,
+            maxMessagesPerSecond,
+          }),
+      ).toThrow(RangeError);
+    },
+  );
+
   it('queues outgoing frames while connecting, bounded, and flushes them on open', () => {
     const { transport } = createTransport();
     transport.connect();

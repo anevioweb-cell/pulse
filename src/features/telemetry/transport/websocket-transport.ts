@@ -41,6 +41,12 @@ export interface WebSocketTransportOptions {
   scheduler?: Scheduler;
   /** Random source in [0, 1) for backoff jitter. */
   random?: () => number;
+  /**
+   * Inbound frames accepted per RATE_WINDOW_MS before excess frames are dropped and counted.
+   * Defaults to WEBSOCKET.MAX_MESSAGES_PER_SECOND; stress testing (Phase 6) raises it explicitly.
+   * Must be a positive integer.
+   */
+  maxMessagesPerSecond?: number;
   /** Limits, defaulting to WEBSOCKET in config.ts (overridable for tests and the probe). */
   limits?: Partial<Tunable<typeof WEBSOCKET>>;
 }
@@ -73,12 +79,25 @@ export class WebSocketTransport implements TelemetryTransport {
   private rateWindowStart = 0;
   private rateWindowCount = 0;
 
-  constructor({ url, WebSocketImpl, scheduler, random, limits }: WebSocketTransportOptions) {
+  constructor({
+    url,
+    WebSocketImpl,
+    scheduler,
+    random,
+    limits,
+    maxMessagesPerSecond,
+  }: WebSocketTransportOptions) {
     this.url = url;
     this.WebSocketImpl = WebSocketImpl;
     this.scheduler = scheduler ?? systemScheduler;
     this.random = random ?? Math.random;
     this.limits = { ...WEBSOCKET, ...limits };
+    if (maxMessagesPerSecond !== undefined) {
+      if (!Number.isInteger(maxMessagesPerSecond) || maxMessagesPerSecond < 1) {
+        throw new RangeError('maxMessagesPerSecond must be a positive integer');
+      }
+      this.limits.MAX_MESSAGES_PER_SECOND = maxMessagesPerSecond;
+    }
   }
 
   /* ----------------------------------------------- public API ---------------------------------- */
