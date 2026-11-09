@@ -212,6 +212,10 @@ describe('mock telemetry server', () => {
   it('shuts down gracefully: clients receive 1001 and the transport starts reconnecting', async () => {
     const running = await start();
     const { transport } = connectTransport(running.url);
+    // Record every status: the first retry can fail (1006, server gone) before a poll would see
+    // the 1001 transition, so asserting on the current status alone would be racy.
+    const statuses: { state: string; reason?: string | undefined }[] = [];
+    transport.onStatus((status) => statuses.push(status));
     await vi.waitFor(() => {
       expect(running.clientCount).toBe(1);
     });
@@ -219,7 +223,9 @@ describe('mock telemetry server', () => {
     server = null;
 
     await vi.waitFor(() => {
-      expect(transport.getStatus()).toMatchObject({ state: 'reconnecting', reason: 'closed_1001' });
+      expect(statuses).toContainEqual(
+        expect.objectContaining({ state: 'reconnecting', reason: 'closed_1001' }),
+      );
     });
   });
 });
