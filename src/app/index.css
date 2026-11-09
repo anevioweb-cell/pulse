@@ -1,7 +1,12 @@
-/* Scan only application sources, not docs or config (paths are relative to this file). */
+/* Scan only application sources, not docs or config (paths are relative to this file).
+   Stories, MDX docs and tests are excluded so Storybook never adds classes to the app bundle;
+   .storybook/preview.css adds them back for Storybook only. */
 @import 'tailwindcss' source(none);
 @source '../';
 @source '../../index.html';
+@source not '../**/*.stories.tsx';
+@source not '../**/*.mdx';
+@source not '../**/*.test.{ts,tsx}';
 
 @import '../shared/styles/fonts.css';
 @import '../shared/styles/tokens.css';

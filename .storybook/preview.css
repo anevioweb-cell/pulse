@@ -1,0 +1,4 @@
+/* Storybook-only stylesheet: the app CSS plus the classes used only in stories and MDX docs. */
+@import '../src/app/index.css';
+@source '../src/**/*.stories.tsx';
+@source '../src/**/*.mdx';

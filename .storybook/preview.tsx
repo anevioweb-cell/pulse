@@ -1,7 +1,7 @@
 import { DirectionProvider } from '@radix-ui/react-direction';
 
 import { Toaster } from '../src/shared/ui';
-import '../src/app/index.css';
+import './preview.css';
 
 import type { Decorator, Preview } from '@storybook/react-vite';
 
