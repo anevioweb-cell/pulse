@@ -5,23 +5,26 @@ import { FORBIDDEN_KEYS } from './untrusted';
 import type { MessageType, TelemetryMessage } from './protocol';
 
 /** Why a frame was rejected. Every rejection has exactly one reason; the parser never throws. */
-export type ParseFailureReason =
+export const PARSE_FAILURE_REASONS = [
   /** Not a text frame (binary data, objects from a buggy transport). */
-  | 'unsupported_payload'
+  'unsupported_payload',
   /** Larger than PROTOCOL.MAX_FRAME_BYTES (UTF-8). */
-  | 'too_large'
+  'too_large',
   /** Not valid JSON (includes NaN/Infinity, which JSON cannot encode). */
-  | 'invalid_json'
+  'invalid_json',
   /** Contains a `__proto__`, `constructor` or `prototype` key at any depth. */
-  | 'forbidden_key'
+  'forbidden_key',
   /** Valid JSON but not an object (array, string, number, null). */
-  | 'not_an_object'
+  'not_an_object',
   /** Missing or unsupported protocol version `v`. */
-  | 'unknown_version'
+  'unknown_version',
   /** Missing or unknown message `type`. */
-  | 'unknown_type'
+  'unknown_type',
   /** Right version and type, but fields are missing, extra, mistyped or out of range. */
-  | 'schema_violation';
+  'schema_violation',
+] as const;
+
+export type ParseFailureReason = (typeof PARSE_FAILURE_REASONS)[number];
 
 export type ParseResult =
   | { ok: true; message: TelemetryMessage }
