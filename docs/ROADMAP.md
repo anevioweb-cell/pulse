@@ -15,7 +15,13 @@
     - [x] End-to-end tests (simulator and mock server), re-render isolation test, measurements
     - [x] docs/architecture.md data-flow diagram
 - [ ] Phase 4: Caching and offline
-  - [ ] 4A: Data-access layer (repository with HTTP and Demo implementations), mock server REST endpoints, TanStack Query keys and cache policy, IndexedDB persistence
+  - [x] 4A: Data-access layer (repository with HTTP and Demo implementations), mock server REST endpoints, TanStack Query keys and cache policy, IndexedDB persistence
+    - [x] `TelemetryApi` with `HttpTelemetryApi` and `DemoTelemetryApi`, one contract suite proving parity against the real mock server (ADR 0015)
+    - [x] Hardened mock server REST API: validation, caps, CORS allowlist, WebSocket Origin check, rate limit, opt-in fault injection ([security.md](security.md#rest-input))
+    - [x] Query keys, per-resource cache policy, retry policy, data hooks ([caching.md](caching.md), ADR 0016)
+    - [x] IndexedDB persistence with validation, migrations and per-mode namespaces (ADR 0017)
+    - [x] QueryClient provider, Query devtools in development only (proven absent from production)
+    - [x] Benchmarks and smoke test ([performance.md](performance.md#phase-4a-data-access-layer))
   - [ ] 4B: Optimistic updates, prefetching, service worker / PWA, offline banner
 - [ ] Phase 5: Dashboard features (charts, devices table, alerts, settings)
 - [ ] Phase 6: Performance
