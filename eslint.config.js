@@ -11,7 +11,7 @@ import globals from 'globals';
 import { configs as tseslint } from 'typescript-eslint';
 
 const TS_FILES = ['**/*.{ts,tsx}'];
-const TEST_FILES = ['**/*.test.{ts,tsx}', 'src/test/**'];
+const TEST_FILES = ['**/*.test.{ts,tsx}', 'src/test/**', 'src/**/testing/**'];
 
 // Physical-direction Tailwind utilities (RTL support, see CLAUDE.md). Matches whole class tokens,
 // with optional variants (`md:`, `hover:`), `!` and negative prefixes, in any string literal.

@@ -3,51 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PROTOCOL, SIMULATOR } from '../config';
 import { EXAMPLE_TS } from '../model/fixtures';
 import { parseTelemetryMessage } from '../model/parse';
-import { createSimulatorHost } from './simulator-host';
+import { FakeWorker } from '../testing/fake-worker';
 import { SimulatorTransport } from './simulator-transport';
-
-import type { WorkerLike } from './simulator-transport';
-
-type Listener = (event: { data: unknown }) => void;
-
-/** In-thread stand-in for the module worker: runs the real host, asynchronously like a worker. */
-class FakeWorker implements WorkerLike {
-  readonly received: unknown[] = [];
-  terminated = false;
-  private readonly listeners = new Map<string, Listener[]>();
-  private readonly host = createSimulatorHost({
-    post: (event) => {
-      queueMicrotask(() => {
-        this.emit('message', event);
-      });
-    },
-    now: () => Date.now(),
-    setInterval: (callback, ms) => setInterval(callback, ms),
-    clearInterval: (handle) => {
-      clearInterval(handle);
-    },
-  });
-
-  addEventListener(type: 'message', listener: Listener): void;
-  addEventListener(type: 'error', listener: () => void): void;
-  addEventListener(type: string, listener: Listener): void {
-    this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
-  }
-
-  postMessage(message: unknown): void {
-    this.received.push(message);
-    if (!this.terminated) this.host.handle(message);
-  }
-
-  terminate(): void {
-    this.terminated = true;
-    this.host.handle({ type: 'stop' });
-  }
-
-  emit(type: string, data?: unknown): void {
-    for (const listener of this.listeners.get(type) ?? []) listener({ data });
-  }
-}
 
 let worker: FakeWorker;
 
