@@ -23,6 +23,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Firmware secrets (copy config.h.example to config.h locally)
+firmware/**/config.h
+
 # Claude Code personal overrides (only .claude/settings.json is shared)
 .claude/settings.local.json
 

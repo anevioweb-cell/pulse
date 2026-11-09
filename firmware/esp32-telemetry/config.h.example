@@ -1,0 +1,42 @@
+// Copy this file to config.h and fill in your values. config.h is git-ignored:
+// never commit real Wi-Fi credentials or hostnames.
+#pragma once
+
+// ---- Wi-Fi ----------------------------------------------------------------------------------
+#define WIFI_SSID "your-wifi-ssid"
+#define WIFI_PASSWORD "your-wifi-password"
+
+// ---- Telemetry server -----------------------------------------------------------------------
+// The mock server in relay mode on your computer, e.g. `npm run server -- --host 0.0.0.0 --relay`
+// then use your computer's LAN IP here.
+#define SERVER_HOST "192.168.1.10"
+#define SERVER_PORT 8787
+#define SERVER_PATH "/"
+// 1 to use wss:// (TLS). The mock server only speaks plain ws://.
+#define SERVER_USE_TLS 0
+
+// ---- Device identity ------------------------------------------------------------------------
+// Leave DEVICE_ID empty to derive "esp32-<mac>" from the chip's MAC address.
+// Allowed characters: letters, digits, . _ : -  (max 64). Name and location: max 64 characters.
+#define DEVICE_ID ""
+#define DEVICE_NAME "Living room"
+#define DEVICE_LOCATION "Ground floor"
+
+// ---- Sensor ---------------------------------------------------------------------------------
+// Exactly one of: SENSOR_BME280 (temperature, humidity, pressure over I2C)
+//                 SENSOR_DHT22  (temperature, humidity on one GPIO)
+#define SENSOR_BME280
+// #define SENSOR_DHT22
+
+#define BME280_I2C_ADDRESS 0x76  // 0x77 on some breakout boards
+#define DHT22_PIN 4
+
+// Optional battery monitoring through a voltage divider on an ADC pin. Leave undefined on USB power
+// (battery is then omitted from readings, as the protocol allows).
+// #define BATTERY_ADC_PIN 35
+#define BATTERY_DIVIDER_RATIO 2.0f  // 100k/100k divider halves the battery voltage
+#define BATTERY_EMPTY_VOLTS 3.30f
+#define BATTERY_FULL_VOLTS 4.20f
+
+// ---- Timing ---------------------------------------------------------------------------------
+#define READING_INTERVAL_MS 5000
