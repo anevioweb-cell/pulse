@@ -264,23 +264,25 @@ export function serializeQueryCache(options: QueryPersistenceOptions): string {
     savedAt: now(),
     entries: [],
   };
-  let text = JSON.stringify(record);
+  // Size is tracked incrementally: the record's JSON is the empty record's JSON plus each entry's
+  // JSON and one comma between entries. Re-stringifying the whole record per entry made a write
+  // near the byte cap quadratic (docs/performance.md has the before/after measurement).
+  let bytes = encoder.encode(JSON.stringify(record)).length;
   for (const query of candidates) {
     if (record.entries.length >= limits.maxEntries) break;
-    record.entries.push({
+    const entry = {
       key: [...query.queryKey],
       updatedAt: query.state.dataUpdatedAt,
       data: query.state.data,
-    });
-    const next = JSON.stringify(record);
-    if (encoder.encode(next).length > limits.maxBytes) {
-      // Evict: this entry (older than every entry already kept) does not fit.
-      record.entries.pop();
-      break;
-    }
-    text = next;
+    };
+    const added =
+      encoder.encode(JSON.stringify(entry)).length + (record.entries.length > 0 ? 1 : 0);
+    // Evict: this entry (older than every entry already kept) does not fit.
+    if (bytes + added > limits.maxBytes) break;
+    record.entries.push(entry);
+    bytes += added;
   }
-  return text;
+  return JSON.stringify(record);
 }
 
 /**

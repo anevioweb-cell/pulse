@@ -263,6 +263,21 @@ describe('persisted query cache', () => {
       entries: unknown[];
     };
     expect(capped.entries).toHaveLength(3);
+
+    // Size accounting is exact: a cap of exactly k entries' bytes keeps k, one byte less keeps k-1.
+    const exact = new TextEncoder().encode(
+      serializeQueryCache(options(client, storage, { limits: { maxEntries: 5 } })),
+    ).length;
+    const entriesWithin = (bytes: number) =>
+      (
+        JSON.parse(
+          serializeQueryCache(options(client, storage, { limits: { maxBytes: bytes } })),
+        ) as {
+          entries: unknown[];
+        }
+      ).entries.length;
+    expect(entriesWithin(exact)).toBe(5);
+    expect(entriesWithin(exact - 1)).toBe(4);
   });
 
   it('degrades to memory-only when storage is unavailable, failing or hanging', async () => {
