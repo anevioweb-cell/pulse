@@ -36,3 +36,40 @@ No `'unsafe-inline'`, and no nonces yet (Pulse is a static SPA; a nonce needs a 
   2. serve `index.html` with a per-request nonce (needs an edge function or server) and call `setNonce()` before rendering;
   3. `style-src 'self' 'unsafe-inline'`. Style injection is a much smaller risk than script injection, but it still allows CSS-based data exfiltration if an attacker can inject markup.
 - Decide in a Phase 7 ADR. Add a CSP test (Playwright, Phase 9) that opens a Dialog and a Select under the chosen policy and checks for violation reports.
+
+## WebSocket input
+
+Everything received over a WebSocket (and from the simulator worker, which goes through the same path) is untrusted: a device can be buggy, compromised or impersonated, and anyone on the network can connect to the server. Defenses, in the order a frame meets them:
+
+1. **URL validation before connecting:** only `ws:` and `wss:` URLs, and no credentials embedded in the URL. Anything else fails before a socket is constructed (`validateWebSocketUrl`).
+2. **Transport limits** (`WebSocketTransport`, values in `src/features/telemetry/config.ts`):
+   - binary frames are dropped;
+   - frames over 4096 UTF-8 bytes are dropped before any parsing;
+   - frames beyond 200 per second are dropped (fixed one-second window).
+
+   Every drop is counted (`getStats()`), so floods are visible rather than silent. The outgoing queue is bounded (32 frames, oldest dropped).
+
+3. **Parser** (`parseTelemetryMessage`, ADR 0011): it never throws and returns a typed failure reason. JSON syntax errors (including `NaN`/`Infinity`) are rejected, then forbidden keys, wrong version or type, extra keys, wrong types and out-of-range numbers.
+4. **Prototype pollution:**
+   - The `JSON.parse` reviver rejects `__proto__`, `constructor` and `prototype` keys at any depth.
+   - Device ids must match `[A-Za-z0-9._:-]{1,64}` and may not be one of those three names.
+   - Device-keyed state (Phase 3B) uses `Map`, never plain objects as dictionaries. Validated objects are never merged into existing objects with `Object.assign` or spread from untrusted keys.
+5. **Strings shown in the UI:**
+   - Names and locations are length-capped, then stripped of control characters, bidi overrides ("Trojan Source"-style spoofing) and line separators.
+   - React escapes text by default, and `dangerouslySetInnerHTML` is banned by ESLint. A device name like `<img onerror=…>` renders as text.
+   - Failure details never echo attacker-provided strings (for example, only numeric versions are echoed).
+6. **Mock server** (`server/`, dev only):
+   - **Exposure:** binds to `127.0.0.1` by default and warns when bound elsewhere.
+   - **Frame and rate limits:** `maxPayload` of 4096 bytes (close 1009); 20 inbound frames per second per client (close 1008).
+   - **Compression:** off (no decompression bombs).
+   - **Slow consumers:** frames are dropped once more than 1 MiB is buffered for a client, so the server cannot run out of memory.
+   - **Dead clients:** protocol pings every 30 s, and clients that don't answer are removed.
+   - **Relay mode:** inbound frames go through the same parser. When relaying is on, the server forwards the re-encoded, sanitized message, never the raw bytes.
+   - **CLI options:** validated with zod/mini.
+7. **Firmware** (`firmware/esp32-telemetry`): `config.h` with Wi-Fi credentials is git-ignored and only `config.h.example` with placeholders is committed. The sample uses plain `ws://` for the local mock server. Production needs `wss://` and device authentication (Phase 10).
+
+**Not covered yet:**
+
+- **Device authentication:** any client that can reach the server can claim any device id.
+- **Replay protection** (old `ts`/`seq` values are accepted).
+- **Per-device rate limits** on the dashboard side. These are threat-model items for Phase 7, and server-side work for Phase 10.
