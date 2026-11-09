@@ -158,3 +158,49 @@ Own costs do not add up, because components share infrastructure (`@floating-ui`
 
 - **JS:** nothing in the app imports `src/features/telemetry` yet, so none of the feature's code, the simulator worker or the server is in `dist/`. The JS is byte-for-byte the same size.
 - **CSS:** Tailwind scans source _text_, not imports. The word `transition` in `transport/state-machine.ts` (comments and an error message) matches the `transition` utility, so `.transition` was generated (diffed against the previous build's class list; it is the only new class). It is harmless and the UI will use it anyway. Excluding non-UI folders from Tailwind's sources is not worth the fragility.
+
+## Live store ingestion and publishing (Phase 3B)
+
+**Method:**
+
+- **Runner:** a throwaway script (not committed), run with `tsx` on Node 24.21.0, AMD Ryzen 5 8500G, single thread.
+- **Input:** `SimulationEngine` (seed 1, dropouts off) pre-generates readings for 120 s at 5 Hz per device, encoded as wire frames, so generation is not timed.
+- **What is timed:** `TelemetryIngestor`, the code behind `TelemetryService` (the service only adds the transport callback and the frame request).
+- **Runs:** each figure is the median of 5 runs. Publish costs are the median and p95 of 1,800 frames, after 200 warm-up frames.
+
+**Ingestion throughput**
+
+| Path                                                                                       | 12 devices    | 200 devices   |
+| ------------------------------------------------------------------------------------------ | ------------- | ------------- |
+| Raw frame → parse → ring buffer write (no publish)                                         | 184,711 msg/s | 178,143 msg/s |
+| Raw → buffers → published store state, one publish per message (worst case)                | 137,709 msg/s | –             |
+| Raw → buffers → published state, one publish per 17 messages (200 devices × 5 Hz ÷ 60 fps) | –             | 170,739 msg/s |
+| Raw → buffers → published state, one publish per 200 messages                              | –             | 177,010 msg/s |
+
+Parsing dominates, about 5.4–5.6 µs per message; the buffer writes add little on top of the Phase 3A parser figure. Batching per frame keeps publishing to a few percent of the ingestion cost.
+
+**Publish cost per frame** (`ingestor.publish`: builds the next immutable state, reusing unchanged device objects; excludes React rendering)
+
+| Devices | Every device changed since last frame | One device changed        |
+| ------- | ------------------------------------- | ------------------------- |
+| 12      | median 1.3 µs, p95 2.1 µs             | median 0.9 µs, p95 1.2 µs |
+| 200     | median 13.2 µs, p95 18.7 µs           | median 5.3 µs, p95 6.2 µs |
+
+A 60 fps frame budget is 16.7 ms, so even 200 changing devices use about 0.1 % of it for the store itself. React rendering of subscribers is the real cost, and Phase 5 and Phase 6 measure it.
+
+**Memory:**
+
+- Ring buffers are allocated once per device: 144,000 B with the default capacity of 1800 samples × 5 metrics. That is 1,728,000 B for 12 devices and 28,800,000 B for 200 devices, measured with `bufferBytes` (constant regardless of messages pushed).
+- The device cap (`STORE.MAX_DEVICES` = 256) bounds the total at about 36.9 MB.
+
+**Production app bundle:**
+
+| Asset | End of Phase 3A         | After Phase 3B          | Delta (gzip) |
+| ----- | ----------------------- | ----------------------- | ------------ |
+| JS    | 229.82 kB / 72.18 kB gz | 229.82 kB / 72.18 kB gz | 0            |
+| CSS   | 31.07 kB / 7.06 kB gz   | 31.09 kB / 7.07 kB gz   | +0.01 kB     |
+
+- **JS:** the app still imports nothing from `src/features/telemetry`, so Zustand, the store and the service are not in `dist/`. Their cost will be measured when Phase 5 wires them in.
+- **CSS:** Tailwind scans source text. A class-list diff against the pre-3B build (built in a separate `git worktree`) showed two new classes:
+  - `.static`, from `static instances` in the test fakes. Fixed: `testing/` folders are now excluded from Tailwind's sources, like tests and stories.
+  - `.contents`, from the word "contents" in a comment in `store/selectors.ts`. Kept; it is harmless.
