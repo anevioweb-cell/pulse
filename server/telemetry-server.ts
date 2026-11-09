@@ -45,6 +45,8 @@ export interface TelemetryServerOptions {
   random?: () => number;
   /** Clock for REST data (history never goes past "now"). */
   now?: () => number;
+  /** Alert rule ids (UUIDs by default); tests pass a deterministic generator. */
+  generateId?: () => string;
   log?: (line: string) => void;
 }
 
@@ -93,6 +95,7 @@ export async function startTelemetryServer({
   faults = null,
   random = Math.random,
   now = () => Date.now(),
+  generateId,
   log = () => undefined,
 }: TelemetryServerOptions = {}): Promise<TelemetryServer> {
   const engine = new SimulationEngine({ startTime: Date.now(), seed, deviceCount, rateHz });
@@ -108,7 +111,7 @@ export async function startTelemetryServer({
   };
 
   const origins = new Set(allowedOrigins);
-  const rules = new AlertRuleStore();
+  const rules = new AlertRuleStore(generateId ? { generateId } : {});
   const rest = createRestHandler({
     data: new SimulatedTelemetryData({
       model: new HistoryModel({ seed, deviceCount }),
