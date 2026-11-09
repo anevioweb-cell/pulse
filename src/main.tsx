@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 
 import { App } from '@/app/App';
 import { AppProviders } from '@/app/providers';
+import { registerServiceWorker } from '@/app/pwa/register';
 import { ThemeProvider } from '@/shared/theme';
 import '@/app/index.css';
 
@@ -21,3 +22,6 @@ createRoot(rootElement).render(
     </ThemeProvider>
   </StrictMode>,
 );
+
+// After the first render, so the worker never delays it. Failure leaves an online-only app.
+void registerServiceWorker();
