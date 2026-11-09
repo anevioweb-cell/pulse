@@ -165,10 +165,19 @@ export default defineConfig(
   },
 
   {
-    // Tests and stories use literal demo values (sizes, offsets, counts) by design.
-    files: [...TEST_FILES, '**/*.stories.{ts,tsx}', '.storybook/**'],
+    // Tests and stories use literal demo values (sizes, offsets, counts) by design. config.ts
+    // modules are where named limits and timings are defined (each with a justifying comment).
+    files: [...TEST_FILES, '**/*.stories.{ts,tsx}', '.storybook/**', 'src/**/config.ts'],
     rules: {
       '@typescript-eslint/no-magic-numbers': 'off',
+    },
+  },
+
+  // Node code: mock server and CLI scripts (tsconfig.server.json).
+  {
+    files: ['server/**/*.ts', 'scripts/**/*.ts'],
+    languageOptions: {
+      globals: globals.node,
     },
   },
 
