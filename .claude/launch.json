@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "bench-persistence",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "scripts/bench/persistence",
+        "--config",
+        "vite.config.ts",
+        "--port",
+        "5181",
+        "--strictPort"
+      ],
+      "port": 5181
+    }
+  ]
+}
