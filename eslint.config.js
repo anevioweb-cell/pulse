@@ -58,6 +58,8 @@ export default defineConfig(
         },
       ],
       'import-x/no-default-export': 'off',
+      // Vite virtual modules (vite-plugin-pwa's virtual:pwa-register) exist only inside the build.
+      'import-x/no-unresolved': ['error', { ignore: ['^virtual:'] }],
       '@typescript-eslint/consistent-type-imports': 'error',
       'no-restricted-imports': [
         'error',

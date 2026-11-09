@@ -16,6 +16,21 @@ const config: StorybookConfig = {
   typescript: {
     reactDocgen: 'react-docgen-typescript',
   },
+  // Stories never register a service worker: drop the PWA plugins (ADR 0020).
+  viteFinal: (viteConfig) => ({
+    ...viteConfig,
+    plugins: (viteConfig.plugins ?? [])
+      .flat()
+      .filter(
+        (plugin) =>
+          !(
+            plugin &&
+            typeof plugin === 'object' &&
+            'name' in plugin &&
+            plugin.name.startsWith('vite-plugin-pwa')
+          ),
+      ),
+  }),
 };
 
 export default config;
