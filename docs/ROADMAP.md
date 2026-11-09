@@ -14,7 +14,9 @@
     - [x] TelemetryService wiring demo and live transports through one parser
     - [x] End-to-end tests (simulator and mock server), re-render isolation test, measurements
     - [x] docs/architecture.md data-flow diagram
-- [ ] Phase 4: Caching and offline (TanStack Query, IndexedDB persistence, service worker)
+- [ ] Phase 4: Caching and offline
+  - [ ] 4A: Data-access layer (repository with HTTP and Demo implementations), mock server REST endpoints, TanStack Query keys and cache policy, IndexedDB persistence
+  - [ ] 4B: Optimistic updates, prefetching, service worker / PWA, offline banner
 - [ ] Phase 5: Dashboard features (charts, devices table, alerts, settings)
 - [ ] Phase 6: Performance
 - [ ] Phase 7: Security (threat model, CSP, XSS hardening)
