@@ -23,6 +23,13 @@
     - [x] QueryClient provider, Query devtools in development only (proven absent from production)
     - [x] Benchmarks and smoke test ([performance.md](performance.md#phase-4a-data-access-layer))
   - [ ] 4B: Optimistic updates, prefetching, service worker / PWA, offline banner
+    - [ ] Demo alert rules persisted in IndexedDB as the source of truth in Demo Mode (ADR 0018)
+    - [ ] Optimistic alert-rule mutations with exact rollback, no retries, no offline queue (ADR 0019)
+    - [ ] Hover/focus prefetching of device detail and recent readings
+    - [ ] Connectivity model (online, offline, degraded, unknown) and "last updated" times
+    - [ ] Shared Banner and StatusIndicator components, OfflineBanner and UpdateAvailableBanner
+    - [ ] Service worker and web app manifest with a user-driven update flow (ADR 0020)
+    - [ ] Measurements and documentation (caching, security, performance)
 - [ ] Phase 5: Dashboard features (charts, devices table, alerts, settings)
 - [ ] Phase 6: Performance
 - [ ] Phase 7: Security (threat model, CSP, XSS hardening)
