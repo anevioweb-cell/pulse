@@ -198,6 +198,11 @@ export const API = {
   /** Rules per fleet: plenty for a home dashboard, and bounds alert-history cost and memory. */
   MAX_ALERT_RULES: 50,
   RULE_NAME_MAX_LENGTH: 64,
+  /**
+   * Persisted-cache buster: bump whenever a persisted response shape changes, so caches written
+   * by an older build are discarded instead of validated against the wrong schema.
+   */
+  PERSISTED_CACHE_BUSTER: 'telemetry-rest-v1',
   /** Alert event ids are "<ruleId>.<deviceId>.<ts>": two 64-char ids plus a timestamp. */
   ALERT_ID_MAX_LENGTH: 160,
 } as const;

@@ -51,4 +51,9 @@ export const PERSISTENCE = {
   MAX_AGE_MS: 24 * MS_PER_HOUR,
   /** Cache writes are debounced: one write per second at most, after the cache settles. */
   WRITE_DEBOUNCE_MS: MS_PER_SECOND,
+  /**
+   * An IndexedDB read or write that takes longer than 2 s (blocked by another tab, broken
+   * storage) is abandoned and persistence falls back to memory-only for the session.
+   */
+  IO_TIMEOUT_MS: 2 * MS_PER_SECOND,
 } as const;

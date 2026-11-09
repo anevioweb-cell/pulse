@@ -119,3 +119,5 @@ export {
   useDevices,
   useHistoricalReadings,
 } from './api/hooks';
+export { setupTelemetryPersistence, telemetryPersistPolicy } from './api/persistence';
+export type { TelemetryPersistenceOptions } from './api/persistence';

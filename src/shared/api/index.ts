@@ -6,3 +6,17 @@ export { createHttpClient } from './http-client';
 export type { HttpClient, HttpClientOptions, HttpMethod, RequestOptions } from './http-client';
 export { retryDelay, shouldRetry } from './retry';
 export { createQueryClient } from './query-client';
+export {
+  createIdbStorage,
+  createMemoryStorage,
+  migrateRecord,
+  persistQueryCache,
+  restoreQueryCache,
+  serializeQueryCache,
+} from './persistence';
+export type {
+  KeyValueStorage,
+  PersistPolicy,
+  QueryPersistenceOptions,
+  RestoreReport,
+} from './persistence';
