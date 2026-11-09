@@ -169,6 +169,37 @@ export const MOCK_SERVER = {
   SHUTDOWN_GRACE_MS: 5 * MS_PER_SECOND,
 } as const;
 
+/* ---------------------------------------------------------------------------------------------- */
+/* Live store (ring buffers, batching, stale detection)                                           */
+/* ---------------------------------------------------------------------------------------------- */
+
+export const STORE = {
+  /**
+   * Samples kept per device and metric. 1800 = 30 minutes of history at the default 1 Hz
+   * (3 minutes at the 10 Hz maximum, 2.5 hours at the firmware's 5 s interval). Memory:
+   * 2 Float64Arrays x 1800 x 8 B = 28,800 B per metric, x 5 metrics = 144,000 B (~141 KiB) per
+   * device; 12 devices ~1.65 MiB, 200 devices ~27.5 MiB.
+   */
+  RING_BUFFER_CAPACITY: 1800,
+  /**
+   * Maximum distinct devices tracked. Each new device id allocates ~141 KiB of buffers, so an
+   * uncapped map would let a hostile client exhaust memory by announcing endless ids. 256 is
+   * above the 200-device stress target with headroom; extra ids are rejected and counted.
+   */
+  MAX_DEVICES: 256,
+  /**
+   * A device with no reading for 15 s is "stale": 3 missed readings at the firmware's 5 s
+   * interval, 15 at the simulator's 1 Hz. Distinct from an explicit device_offline message.
+   */
+  STALE_AFTER_MS: 15 * MS_PER_SECOND,
+  /** How often stale status is re-evaluated when no messages arrive (it changes with time alone). */
+  STALE_CHECK_INTERVAL_MS: MS_PER_SECOND,
+  /**
+   * Fallback frame interval where requestAnimationFrame does not exist (Node, workers): ~60 Hz.
+   */
+  FALLBACK_FRAME_MS: 16,
+} as const;
+
 /** WebSocket close codes used by the transport and server (RFC 6455 section 7.4). */
 export const CLOSE_CODES = {
   NORMAL: 1000,
