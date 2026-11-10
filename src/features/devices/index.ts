@@ -12,3 +12,10 @@ export const loadDeviceRoute = () =>
 /** The REST contract's device id rule, for validating a route parameter before it is used. */
 export const isDeviceId = (value: unknown): value is string =>
   deviceIdSchema.safeParse(value).success;
+
+// Device display pieces shared with the overview.
+export { DeviceStatusBadge } from './components/DeviceStatusBadge';
+export { useLastSeenLabel } from './components/use-last-seen';
+export { formatMetric, metricLabel, metricUnit, statusLabel } from './model/format';
+export type { DisplayStatus } from './model/format';
+export { DEVICE_DISPLAY } from './config';

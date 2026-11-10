@@ -90,7 +90,7 @@ export {
 } from './live';
 
 // Server-state data access (Phase 4A): REST contract, repository interface and implementations.
-export { API, CONNECTIVITY, PREFETCH, QUERY_POLICY } from './config';
+export { API, CONNECTIVITY, PREFETCH, QUERY_POLICY, STORE } from './config';
 export * from './api/contract';
 export type { CallOptions, ReadingsRequest, TelemetryApi } from './api/telemetry-api';
 export { HttpTelemetryApi } from './api/http-telemetry-api';
