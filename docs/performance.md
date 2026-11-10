@@ -544,6 +544,82 @@ Nothing was changed, because nothing is broken.
 | `src/app/session`, `router`, `pwa`, `status-banners`, other `src/app` files            | 4.45 kB  | Yes                                                    | None                                                                                                                                                                                                                         |
 | `zustand`, `idb-keyval`, `class-variance-authority`, theme, runtime, entry             | 3.23 kB  | Yes                                                    | None                                                                                                                                                                                                                         |
 
+## Phase 5B: device detail page and charts
+
+**Method:** as in Phase 5A: `npm run build` (Vite 8) gzip sizes, chunk contents from `npm run analyze` (`dist/stats.html`), initial JS = the entry plus the chunks `index.html` preloads.
+
+### Production bundle vs the end of 5A
+
+| Build     | Initial JS (gzip)                                                                | CSS (gzip)  | Delta (initial JS) |
+| --------- | -------------------------------------------------------------------------------- | ----------- | ------------------ |
+| End of 5A | 177.58 kB (4 chunks)                                                             | 8.46 kB     | n/a                |
+| End of 5B | **178.08 kB** (3 chunks: `index` 100.38, `ErrorState` 62.26, `PageHeader` 15.44) | **8.79 kB** | +0.50 kB           |
+
+- Rollup regrouped the shared chunks: React Router and lucide's runtime, the old `createLucideIcon-*.js`, are now in `ErrorState-*.js`. The sum is what matters.
+- The growth is the device page's strings in the shared messages module (`PageHeader-*.js`, 14.78 → 15.44 kB; "Recorded since" is in that chunk) and the two new live selectors. The app CSS grew by 0.33 kB: Tailwind utilities used by the new components (Tailwind scans files, not imports).
+- **uPlot is only in the lazy device page** (checked in the analyze build): `uplot/dist/uPlot.esm.js`, `uPlot.min.css`, `time-series-chart.css` and `TimeSeriesChart` are all in `DevicePage-*.js` and `DevicePage-*.css`, and no initial chunk contains uPlot code. `TimeSeriesChart` has its own entry point instead of a barrel export (docs/design-system.md).
+
+**Lazy route chunks (gzip):**
+
+| Chunk                | Gzip     | Contents                                                                                            |
+| -------------------- | -------- | --------------------------------------------------------------------------------------------------- |
+| `DevicePage-*.js`    | 31.44 kB | uPlot (32.38 kB of per-module gzip in the treemap), TimeSeriesChart, the chart data layer, the page |
+| `DevicePage-*.css`   | 0.77 kB  | uPlot's stylesheet and the token overrides                                                          |
+| `DevicesPage-*.js`   | 51.67 kB | Unchanged from 5A (table, virtualizer, Radix menus)                                                 |
+| `OverviewPage-*.js`  | 2.63 kB  |                                                                                                     |
+| `use-last-seen-*.js` | 2.10 kB  | Device display pieces shared by the pages                                                           |
+| `prefetch-*.js`      | 0.55 kB  | Readings query helpers shared by the overview, the table and the device page                        |
+| `url-params-*.js`    | 0.29 kB  | The shared query-parameter helper                                                                   |
+
+uPlot alone: 52,000 bytes minified, 23,013 bytes gzip (esbuild 0.28.2), stylesheet 772 bytes gzip (ADR 0025).
+
+### Precache
+
+27 entries, 1053.01 KiB (25 and 969.65 KiB at the end of 5A): the device page's JS and CSS chunks and the new shared chunks. `sw.js` is 16,636 bytes.
+
+### Chart draw time
+
+**Method:** `npm run bench:charts` (`scripts/bench/charts/`), in the desktop app's Chromium 152, page visible, viewport 1280 px, `devicePixelRatio` 1. Five `TimeSeriesChart`s at the device page's small size (616 × 160 px canvases), each fed by a full ring buffer (1800 samples) through the device page's `SeriesAdapter`, all 1800 points visible, one threshold line each. Every animation frame pushes one sample into each buffer, rebuilds the five series and calls `setData`; the clock stops in a microtask queued after uPlot's own draw microtask. 60 warm-up frames, then 600 measured. `performance.now()` is coarsened to 0.1 ms here.
+
+| Viewport            | Canvas    | Median  | p95     | p99     | Max     |
+| ------------------- | --------- | ------- | ------- | ------- | ------- |
+| 1280 px             | 616 × 160 | 2.00 ms | 2.60 ms | 2.90 ms | 4.20 ms |
+| Pane width (627 px) | 282 × 160 | 1.80 ms | 2.30 ms | 2.50 ms | 2.80 ms |
+
+Five full charts redrawn in the same frame take about 2 ms, an eighth of a 60 Hz frame budget. In the app they are redrawn only when their buffer changed (at the device rate, 1 to 10 Hz), not every frame.
+
+### Render counts (React Profiler, `DevicePage.test.tsx`)
+
+| Scenario                                              | Result                                                                                  |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| 100 samples for the open device, one frame each       | Detail view: 2 → 2 renders; each of 5 chart wrappers: 3 → 3; each chart drawn 100 times |
+| 20 samples for another device                         | 0 renders, 0 draws                                                                      |
+| A whole test session (mount, rules load, 100 samples) | Detail view 2 renders; each chart wrapper 3 (mount, rules loaded, series known)         |
+
+### Sustained 10 Hz for one minute
+
+**Method:** the mock server at 10 Hz (`npm run server -- --rate 10 --origin http://localhost:4175`), the production build in Live Mode on `/devices/esp32-01` (live range), page visible. `performance.memory.usedJSHeapSize` (Chromium only, not forced through a garbage collection) and the DOM node count were sampled every second for 62 s.
+
+- **JS heap:** a sawtooth between 10.93 and 14.63 MiB. The lowest value after a collection was 11.51 MiB in both the first and the last 15 s, and the linear trend over the minute was −36.9 KB/s. No growth.
+- **DOM:** 328 nodes at the start and at the end.
+- **Data:** the temperature table showed 371 samples in the last 60 s window, about 10 per second outside a dropout.
+- The ring buffers are allocated once (ADR 0012), so their bytes do not change as they fill. The adapter reuses its arrays, and its allocation test checks that 1000 builds keep the same backing arrays.
+
+### Browser checks (Chromium in the desktop app, `vite preview` of the production build)
+
+1. **Opening the page:** from an Overview card and from a table row; 5 charts draw and move in Demo Mode. After a navigation, focus is on the device heading once the device has loaded (a bug found here: focus was lost when the loading header was replaced; fixed, with a test).
+2. **Ranges:** `5m` shows the buffer with "Recorded since"; `1h` shows history and the live tail joining at the live edge; `24h` shows the min/max envelope of the 10-minute simulated day.
+3. **Pause:** the chart and its summary stayed frozen for the whole pause while the latest values kept changing; resume redrew at the live edge and was announced.
+4. **Gap:** the simulator's dropouts are deterministic per seed (each device's decision depends on its reading count, not the start time). Computed with the engine: esp32-02 goes silent 27 s after the session starts, for 33 s. Opened at the start of a session, its live chart showed the line broken from about 11:27:52 to about 11:28:24 (read on the time axis of the screenshot), and the announcement region said "The device is reporting again." afterwards.
+5. **Tooltip:** hovering points showed time and value equal to the summary's latest value and to the data table's row for that time; it opens on the reading-direction side and flips at the edge.
+6. **Theme:** switching `data-theme` kept the same canvas element; in the first animation frame after the switch the canvas had 0 pixels of the old series color and 19,464 of the new one.
+7. **Layouts:** light, dark, LTR and RTL at 1280 and 375 px: 0 px horizontal overflow in all 8 combinations; the layout mirrors and the plot area stays left to right.
+8. **Data table:** while paused, its newest, lowest and highest values equal the summary label's. This found a bug: the table listed the sample before the window (drawn only so the line enters from the edge); fixed, with a test. At 10 Hz, rows now show tenths of a second.
+9. **Deep link and reload** with `?range=1h&metric=battery` restore both; `esp32-99` shows "Device not found"; `__proto__` shows the 404 page; hostile query values fall back to the defaults.
+10. **Live Mode** against the mock server: charts update, and `1h` loads `/api/devices/:id/readings` (200), refreshed every 30 s.
+
+**Console:** no errors. One Canvas2D `willReadFrequently` warning, caused by the pixel-count probe of check 6. **Not explained:** right after selecting `1h` in Live Mode, Chromium's network log marked 7 of the first 10 readings requests `ERR_ABORTED` after `200 OK`. The charts showed the full history, the following 10 refreshes completed with full bodies, and a `fetch` wrapper saw no abort signal on them. The first requests were not instrumented, so the cause is open.
+
 ## Phase 6 candidates
 
 Measured costs worth revisiting in Phase 6, each with its possible mitigation:
@@ -555,7 +631,8 @@ Measured costs worth revisiting in Phase 6, each with its possible mitigation:
   - Persist readings in a compact numeric form (typed arrays or deltas) that validates faster than JSON arrays of numbers.
 - **Persistence write near the cap: 12 to 14 ms (p50)**, debounced to at most once per settled second. It could move to a worker with the restore.
 - **Initial JS 177.58 kB gzip (Phase 5A).** The inventory is in [Phase 5B: initial-bundle investigation](#what-the-initial-js-contains). The two deferrable groups are the session code per mode (17.47 kB with `shared/api`, loaded also in Live Mode for the demo pieces) and the data-source dialog (14.69 kB of Radix Dialog, Switch and scroll locking). React Router (31.94 kB) is the largest group after React; its declarative mode is smaller but gives up the loaders that ADR 0021 relies on.
-- **Precache 969.65 KiB.** Every route chunk is precached, the 51.66 kB gzip table chunk included. Consider precaching lazy chunks at a lower priority, or only after the first idle period.
+- **Chart redraws at high rates:** five charts redraw at the device rate (measured about 2 ms per frame for all five at 1800 points). With several 10 Hz devices on screen at once (a future multi-device view), cap redraws per chart (for example 30 Hz) in the RedrawScheduler.
+- **Precache 969.65 KiB (1053.01 KiB at the end of 5B).** Every route chunk is precached, the 51.66 kB gzip table chunk included. Consider precaching lazy chunks at a lower priority, or only after the first idle period.
 - **Table scrolling** was not measured in a browser. By construction, the table re-renders all visible rows on scroll (rows are not memoized); `memo` on `DeviceRow` is a candidate if a profile shows it matters.
 - **Alert history KPI:** it computes 24 h of alerts for the whole fleet in the browser (Demo Mode) on each visit. Measure it, and cache or move it to a worker if needed.
 - **Main bundle 99.40 kB gzip (end of 4B).** After React, the largest dependencies in the treemap are `@tanstack/query-core` (14.30 kB), `tailwind-merge` (11.76 kB) and `zod` (11.52 kB). Options for `tailwind-merge`: a smaller `cn()` without class merging for components that never take conflicting classes, or code-splitting the status banners so they load after the first render.
