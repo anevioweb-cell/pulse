@@ -16,4 +16,10 @@
   body {
     @apply bg-surface font-sans text-base text-text antialiased;
   }
+
+  /* A visible keyboard focus ring on everything, including plain links and headings that receive
+     focus on navigation. Components that draw their own ring (focusRing) match it. */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-focus-ring;
+  }
 }
