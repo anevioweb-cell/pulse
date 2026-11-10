@@ -31,7 +31,6 @@ export const messages = {
       /** `id` is a validated device id. */
       title: (id: string) => `Device ${id}`,
       back: 'Back to devices',
-      comingSoon: 'Charts and history for this device arrive in a later release.',
     },
     alerts: {
       title: 'Alerts',
@@ -205,6 +204,76 @@ export const messages = {
       retry: 'Try again',
       waitingTitle: 'Waiting for live data',
       waitingBody: 'Readings appear on each card as soon as the first messages arrive.',
+    },
+  },
+  deviceDetail: {
+    /** "Kitchen · Ground floor · firmware 1.4.2" */
+    facts: (location: string, firmware: string) => `${location} · firmware ${firmware}`,
+    latestHeading: 'Latest values',
+    chartsHeading: 'History',
+    loading: 'Loading device',
+    notFoundTitle: 'Device not found',
+    notFoundDescription: 'The server does not know this device. It may have been removed.',
+    errorTitle: 'Could not load this device',
+    errorDescription: 'Check the connection to the server, then try again.',
+    retry: 'Try again',
+    offlineTitle: 'This device is offline',
+    offlineBody: 'It said it was going offline. The charts keep the data recorded until then.',
+    staleTitle: 'No recent data from this device',
+    staleBody: 'It stopped reporting without going offline, for example after a Wi-Fi dropout.',
+    waitingTitle: 'Waiting for data',
+    waitingBody: 'Readings appear here as soon as this device reports.',
+    rangeLabel: 'Range',
+    ranges: { live: 'Live', '5m': '5 min', '1h': '1 hour', '24h': '24 hours' },
+    /** Spoken range, used in chart summaries. */
+    rangeNames: {
+      live: 'the last minute',
+      '5m': 'the last 5 minutes',
+      '1h': 'the last hour',
+      '24h': 'the last 24 hours',
+    },
+    pause: 'Pause charts',
+    resume: 'Resume charts',
+    paused: 'Paused. Data keeps recording; resume to return to now.',
+    /** Polite announcements: state changes only, never individual samples. */
+    announce: {
+      paused: 'Charts paused.',
+      resumed: 'Charts resumed at the latest data.',
+      offline: 'The device went offline.',
+      stale: 'The device stopped reporting.',
+      online: 'The device is reporting again.',
+    },
+    expand: (metric: string) => `Expand ${metric}`,
+    collapse: (metric: string) => `Show ${metric} at normal size`,
+    /** All parts are formatted already ("21.4", "°C", "the last minute"). */
+    summary: (
+      metric: string,
+      range: string,
+      latest: string,
+      min: string,
+      max: string,
+      unit: string,
+    ) =>
+      `${metric} over ${range}: latest ${latest} ${unit}, lowest ${min} ${unit}, highest ${max} ${unit}.`,
+    summaryEmpty: (metric: string, range: string) => `${metric} over ${range}: no data.`,
+    /** `time` is a formatted clock time. */
+    recordedSince: (time: string) => `Recorded since ${time}: earlier data is not in this view.`,
+    historySource: 'History from the server, then live data.',
+    noData: 'No data in this range',
+    threshold: {
+      above: (value: string, unit: string) => `Alert above ${value} ${unit}`,
+      below: (value: string, unit: string) => `Alert below ${value} ${unit}`,
+    },
+    table: {
+      show: 'Show data table',
+      hide: 'Hide data table',
+      /** `count` and `total` are formatted numbers, `time` a formatted clock time. */
+      caption: (metric: string, time: string) => `${metric}, values shown at ${time}`,
+      capped: (count: string, total: string) => `Newest ${count} of ${total} values.`,
+      refresh: 'Refresh table',
+      time: 'Time',
+      value: (unit: string) => `Value (${unit})`,
+      empty: 'No values in this range.',
     },
   },
   simulatedData: {

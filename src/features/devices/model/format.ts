@@ -3,6 +3,8 @@ import { messages } from '@/shared/i18n';
 
 import { DEVICE_DISPLAY } from '../config';
 
+import type { ChartRange } from '../charts/chart-range';
+
 const formatters = new Map<string, Intl.NumberFormat>();
 
 function formatterFor(metric: SensorMetric, locale: string | undefined): Intl.NumberFormat {
@@ -75,5 +77,35 @@ export function statusLabel(status: DisplayStatus): string {
       return labels.offline;
     default:
       return labels.unknown;
+  }
+}
+
+/** Short range label for the range control ("1 hour"). */
+export function rangeLabel(range: ChartRange): string {
+  const { ranges } = messages.deviceDetail;
+  switch (range) {
+    case 'live':
+      return ranges.live;
+    case '5m':
+      return ranges['5m'];
+    case '1h':
+      return ranges['1h'];
+    case '24h':
+      return ranges['24h'];
+  }
+}
+
+/** Spoken range for chart summaries ("the last hour"). */
+export function rangeName(range: ChartRange): string {
+  const { rangeNames } = messages.deviceDetail;
+  switch (range) {
+    case 'live':
+      return rangeNames.live;
+    case '5m':
+      return rangeNames['5m'];
+    case '1h':
+      return rangeNames['1h'];
+    case '24h':
+      return rangeNames['24h'];
   }
 }

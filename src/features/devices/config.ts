@@ -82,4 +82,27 @@ export const DEVICE_CHART = {
    * redraw at least this often while the clock passes, so an empty tail grows visibly.
    */
   CLOCK_TICK_MS: MS_PER_SECOND,
+  /**
+   * Any query-string value of the device page longer than this is ignored before parsing: the
+   * longest valid value is a metric name (11 characters).
+   */
+  MAX_PARAM_LENGTH: 32,
+  /**
+   * Rows of the data-table alternative to a chart: the newest 300 samples. That is 5 minutes at
+   * 1 Hz (the `5m` range in full) and most of a 1 h history (360 raw points). A screen-reader
+   * table of thousands of rows is not usable, and a full ring buffer (1800 rows) would take a
+   * noticeable time to render; the caption says when rows are left out.
+   */
+  TABLE_MAX_ROWS: 300,
+  /**
+   * Chart palette slot per metric (`--color-chart-N`, colorblind-safe Okabe-Ito hues), so each
+   * metric keeps its color on every page.
+   */
+  METRIC_COLORS: new Map<SensorMetric, 1 | 2 | 3 | 4 | 5 | 6>([
+    ['temperature', 2],
+    ['humidity', 1],
+    ['pressure', 4],
+    ['battery', 3],
+    ['signal', 5],
+  ]),
 } as const;

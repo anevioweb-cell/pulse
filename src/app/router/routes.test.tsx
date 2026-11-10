@@ -61,7 +61,7 @@ describe('routes', () => {
     expect(screen.getByRole('navigation', { name: messages.nav.label })).toBeInTheDocument();
   });
 
-  it('the device placeholder has a back link to the table', async () => {
+  it('the device page has a back link to the table', async () => {
     const { user } = setup('/devices/esp32-01');
     await heading(messages.pages.device.title('esp32-01'));
     await user.click(screen.getByRole('link', { name: messages.pages.device.back }));
