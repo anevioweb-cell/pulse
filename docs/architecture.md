@@ -148,14 +148,14 @@ Decisions: ADR 0021 (routing and URL view state), ADR 0022 and 0024 (devices tab
 
 ### Routes
 
-| Path           | Module (lazy chunk)                       | Guard                                       | Page                                              |
-| -------------- | ----------------------------------------- | ------------------------------------------- | ------------------------------------------------- |
-| `/`            | `loadOverviewRoute` (`OverviewPage-*.js`) | none                                        | KPI cards and the live device grid                |
-| `/devices`     | `loadDevicesRoute` (`DevicesPage-*.js`)   | URL state parsed per field (ADR 0021)       | Virtualized devices table                         |
-| `/devices/:id` | `loadDeviceRoute` (`DevicePage-*.js`)     | `deviceIdGuard`: contract id rule, else 404 | Placeholder (heading and back link; charts in 5B) |
-| `/alerts`      | `loadAlertsRoute` (`AlertsPage-*.js`)     | none                                        | Placeholder (5C)                                  |
-| `/settings`    | `loadSettingsRoute` (`SettingsPage-*.js`) | none                                        | Placeholder (5C)                                  |
-| `*`            | none (in the main chunk)                  | none                                        | Not found                                         |
+| Path           | Module (lazy chunk)                       | Guard                                       | Page                                             |
+| -------------- | ----------------------------------------- | ------------------------------------------- | ------------------------------------------------ |
+| `/`            | `loadOverviewRoute` (`OverviewPage-*.js`) | none                                        | KPI cards and the live device grid               |
+| `/devices`     | `loadDevicesRoute` (`DevicesPage-*.js`)   | URL state parsed per field (ADR 0021)       | Virtualized devices table                        |
+| `/devices/:id` | `loadDeviceRoute` (`DevicePage-*.js`)     | `deviceIdGuard`: contract id rule, else 404 | Device detail with live charts (Phase 5B, below) |
+| `/alerts`      | `loadAlertsRoute` (`AlertsPage-*.js`)     | none                                        | Placeholder (5C)                                 |
+| `/settings`    | `loadSettingsRoute` (`SettingsPage-*.js`) | none                                        | Placeholder (5C)                                 |
+| `*`            | none (in the main chunk)                  | none                                        | Not found                                        |
 
 Every route has `RouteErrorBoundary` inside the layout: a 404 shows the not-found page, any other error the shared `ErrorState` with a retry. Route modules go through `resilientLazy`, so a chunk that fails to load is shown and retried instead of rendering nothing (ADR 0021).
 
@@ -185,3 +185,40 @@ On a navigation to another path, `useRouteFocus` moves focus to the page's `Page
 
 - **Screen readers.** The table's `aria-rowcount`, `aria-rowindex` and `aria-sort`, the route focus move, and the live status line were verified in jsdom (Testing Library, jest-axe) and as DOM attributes in Chromium. No screen reader (NVDA, JAWS, VoiceOver, TalkBack) was run, so how each one announces virtualized row positions and the focused heading is untested.
 - **Hidden panes.** In a hidden browser pane or background tab, `requestAnimationFrame` pauses, so the store does not publish (by design, ADR 0014) until the page is shown again. Chromium's embedded pane reported `visibilityState: "visible"` while frames were paused.
+- **Charts and screen readers.** The chart summaries, the data table and the announcement region were tested with jest-axe and in Chromium (axe, DOM state), not with a screen reader. docs/accessibility.md lists what remains.
+
+## Chart layer (Phase 5B)
+
+Decisions: ADR 0025 (uPlot behind `TimeSeriesChart`), ADR 0026 (ranges, sources, gaps, redraws, Demo consistency), ADR 0027 (chart accessibility).
+
+### From ring buffer to canvas
+
+```
+TelemetryService ── push(ts, value) ──▶ RingBuffer (per device and metric, 1800 samples, version++)
+                                             │  (no React state, no publish needed)
+REST history (1h, 24h) ── TanStack Query ──▶ HistorySamples (ref in DeviceChart)
+                                             │
+RedrawScheduler (one per page, one frame request at a time)
+  each animation frame, if not paused and the page is visible:
+    for each chart whose buffer version changed, or whose window entered a new 1 s tick:
+      SeriesAdapter.build(window, buffer, history) ──▶ reused Float64Array xs + (number|null)[] ys
+      TimeSeriesChart handle: setData(series, window), setLabel(summary)
+                                             │
+                                          uPlot ──▶ canvas
+```
+
+- **Sources per range** (ADR 0026): `live` (1 min) and `5m` read the ring buffer only; `1h` and `24h` read REST history (request end rounded up to 30 s, the prefetch's key for 1 h temperature) followed by the buffer's samples newer than the last history point.
+- **Gaps:** two samples further apart than 3 sample intervals get a `null` between them (the interval is the median spacing in the window, or the history's resolution), so uPlot breaks the line.
+- **Pause** stops all draws; the ring buffers keep recording. Resume draws every chart at the live edge.
+- **Notes and labels without React:** the draw writes the chart's `aria-label` summary, the "no data" overlay and the "Recorded since" note directly to the DOM, only when their text changes.
+
+### How the device page subscribes
+
+| Piece                                  | Subscribes to                                                        | Renders when                                                                                        |
+| -------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `DevicePage` and its detail view       | `useDevice(id)`, `useAlertRules()`, the URL                          | The device or rules load, the range or expanded chart changes                                       |
+| `DeviceChart` (one per metric)         | `useLiveDeviceSeries(id)` (the buffers' identity), its history query | The device first appears, a history response arrives (every 30 s for 1 h and 24 h), the table opens |
+| `LatestValues`                         | `useLiveDevice(id)`                                                  | Every reading of this device (the only per-reading part)                                            |
+| Status badge and banner, announcements | `useLiveDeviceStatus(id)`, the pause state                           | A status change, pause or resume                                                                    |
+
+Measured with React Profiler (`DevicePage.test.tsx`): while 100 samples stream in, the page's detail view renders 0 times (counted through its child `ChartControls`, which has no subscription of its own besides the pause state, so it renders exactly when the view does) and each chart wrapper 0 times, while each chart is drawn 100 times; readings for another device cause no render and no draw. Over a whole test session the page rendered 2 times and each chart wrapper 3 times.
