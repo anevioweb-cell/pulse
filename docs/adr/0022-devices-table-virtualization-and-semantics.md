@@ -1,6 +1,6 @@
 # 0022. Devices table: semantic table markup with virtualized rows and per-row live subscriptions
 
-- **Status:** Accepted
+- **Status:** Accepted. Decision 2 is amended by [0024](0024-table-resort-on-first-reading.md), which also renews the snapshot on each device's first reading.
 - **Date:** 2026-11-10
 
 ## Context

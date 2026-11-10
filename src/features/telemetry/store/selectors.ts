@@ -68,14 +68,16 @@ export const selectOnlineAverage =
   };
 
 /**
- * Every device's status as one string ("a:online|b:stale"). A string, so subscribers re-render
- * only when some device changes status (rare), never on a reading: views that filter or group by
- * status recompute exactly then.
+ * Every device's status, and whether it has a reading yet, as one string ("a:online:1|b:stale:0").
+ * A string, so subscribers re-render only when a device changes status or reports its first
+ * reading (rare), never on later readings: views that sort or filter by live values recompute
+ * exactly then.
  */
 export function selectStatusSignature(state: TelemetryState): string {
   let signature = '';
   for (const id of state.deviceIds) {
-    signature += `${id}:${state.devices.get(id)?.status ?? ''}|`;
+    const device = state.devices.get(id);
+    signature += `${id}:${device?.status ?? ''}:${device?.latest ? '1' : '0'}|`;
   }
   return signature;
 }
@@ -111,7 +113,7 @@ export function createTelemetryHooks(store: TelemetryStore) {
     useHasData: () => useStore(store, selectHasData),
     /** Mean of one metric over online devices (null if none). */
     useOnlineAverage: (metric: SensorMetric) => useStore(store, selectOnlineAverage(metric)),
-    /** Changes only when some device's status changes (see selectStatusSignature). */
+    /** Changes only on a status change or a first reading (see selectStatusSignature). */
     useStatusSignature: () => useStore(store, selectStatusSignature),
     /** Online/stale/offline counts, shallow-compared so it re-renders only when a count changes. */
     useStatusSummary: () => useStore(store, useShallow(selectStatusSummary)),

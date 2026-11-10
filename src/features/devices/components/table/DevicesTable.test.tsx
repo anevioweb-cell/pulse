@@ -171,6 +171,43 @@ describe('URL as the source of truth', () => {
     ]);
   });
 
+  it('filters online devices from a URL loaded after they came online', () => {
+    const devices = synthetic(3);
+    harness = createLiveHarness(undefined, { initialPath: '/devices?status=online' });
+    harness.start();
+    harness.announce(devices);
+    harness.offline(['dev-002']);
+    render(<DevicesTable devices={devices} />, { wrapper: harness.wrapper });
+    expect(screen.getAllByRole('rowheader').map((cell) => cell.textContent)).toEqual([
+      'Sensor 001',
+      'Sensor 003',
+    ]);
+  });
+
+  it('shows online devices when they come online after the table mounted', () => {
+    const devices = synthetic(3);
+    const { harness: live } = setup(devices, '/devices?status=online');
+    expect(screen.queryAllByRole('rowheader')).toHaveLength(0);
+    live.announce(devices);
+    expect(screen.getAllByRole('rowheader')).toHaveLength(3);
+  });
+
+  it('applies a sort from the URL once the first readings arrive', () => {
+    const devices = synthetic(3);
+    const { harness: live } = setup(devices, '/devices?sort=battery');
+    live.announce(devices); // online, but no readings yet: order unchanged
+    live.readings([
+      { id: 'dev-001', values: { battery: 90 } },
+      { id: 'dev-002', values: { battery: 10 } },
+      { id: 'dev-003', values: { battery: 50 } },
+    ]);
+    expect(screen.getAllByRole('rowheader').map((cell) => cell.textContent)).toEqual([
+      'Sensor 002',
+      'Sensor 003',
+      'Sensor 001',
+    ]);
+  });
+
   it('falls back to defaults for a hostile URL and never crashes', () => {
     setup(
       synthetic(3),
@@ -230,6 +267,8 @@ describe('live updates re-render only the affected rows (200 devices)', () => {
     const devices = synthetic(200);
     const { harness: live } = setup(devices, '/devices', CountedRow);
     live.announce(devices);
+    // Each device's first reading re-sorts once (status signature); measure the steady state after.
+    live.readings(devices.map(({ id }) => ({ id })));
     const rendered = [...renders.keys()];
     const total = () => [...renders.values()].reduce((sum, n) => sum + n, 0);
 

@@ -152,16 +152,21 @@ describe('selectors and re-renders', () => {
     expect(renders.get('average')).toBe(afterFirst);
   });
 
-  it('the status signature changes on a status change, not on a reading', () => {
+  it('the status signature changes on a status change or a first reading, not on later ones', () => {
     function SignatureProbe() {
       const signature = hooks.useStatusSignature();
       count('signature');
       return <p>{signature}</p>;
     }
     render(<SignatureProbe />);
-    const initial = renders.get('signature');
     act(() => {
       transport().emit(reading('a', EXAMPLE_TS + 1, 25));
+      frames.runFrame();
+    });
+    expect(screen.getByText('a:online:1|b:online:0|')).toBeInTheDocument();
+    const initial = renders.get('signature');
+    act(() => {
+      transport().emit(reading('a', EXAMPLE_TS + 2, 26));
       frames.runFrame();
     });
     expect(renders.get('signature')).toBe(initial);
@@ -169,7 +174,7 @@ describe('selectors and re-renders', () => {
       transport().emit(announce('c'));
       frames.runFrame();
     });
-    expect(screen.getByText('a:online|b:online|c:online|')).toBeInTheDocument();
+    expect(screen.getByText('a:online:1|b:online:0|c:online:0|')).toBeInTheDocument();
     expect(renders.get('signature')).toBe((initial ?? 0) + 1);
   });
 });

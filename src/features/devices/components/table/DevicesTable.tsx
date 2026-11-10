@@ -147,7 +147,8 @@ export function DevicesTable({ devices, Row = DeviceRow }: DevicesTableProps) {
   const { state, update } = useTableUrlState();
   const statusSignature = useLiveStatusSignature();
   // A new array means new row objects, so TanStack reads a fresh live snapshot. The extra keys are
-  // the point: re-sort and re-filter when the sort, the filter or any device's status changes.
+  // the point: re-sort and re-filter when the sort, the filter, any device's status changes, or a
+  // device reports its first reading (so a sort loaded from the URL applies once values exist).
   const data = useMemo(
     () => [...devices],
     // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
