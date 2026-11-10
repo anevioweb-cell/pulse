@@ -31,6 +31,17 @@
     - [x] Service worker and web app manifest with a user-driven update flow (ADR 0020)
     - [x] Measurements and documentation ([caching.md](caching.md), [security.md](security.md#service-worker), [performance.md](performance.md#phase-4b-service-worker-banners-connectivity))
 - [ ] Phase 5: Dashboard features (charts, devices table, alerts, settings)
+  - [ ] 5A: App shell, routing, Overview page, Devices table
+    - [ ] Demo Mode queries run offline (`networkMode` from the active API)
+    - [ ] App bootstrap: one place builds the API, QueryClient and telemetry session per mode, with clean teardown on switch (ADR 0023)
+    - [ ] Persisted mode and Live URL preference, mode switch in the header, "Simulated data" indicator
+    - [ ] Routing with lazy routes, per-route error boundaries, validated params, 404 (ADR 0021)
+    - [ ] Layout shell: sidebar and bottom navigation, skip link, theme toggle, route focus and title management
+    - [ ] Overview page: KPI cards, live device grid, loading, empty, error and waiting states
+    - [ ] Devices table: virtualized, sortable, searchable, filterable, state in the URL (ADR 0022)
+    - [ ] Real-browser verification, measurements and documentation
+  - [ ] 5B: Device detail page with charts (history from the Query cache plus the live ring buffer)
+  - [ ] 5C: Alerts page (history and rule editing) and Settings page
 - [ ] Phase 6: Performance
 - [ ] Phase 7: Security (threat model, CSP, XSS hardening)
   - Note: CI must run `npm audit --omit=dev` (production dependencies only). The full audit currently reports 15 findings (13 moderate, 2 low), all in dev or build-time packages: a `minimatch` advisory inside `typescript-eslint` (see [ADR 0002](adr/0002-tooling-versions-and-import-boundaries.md)), a `glob` advisory inside Storybook's docgen plugin, and, since Phase 4B, `glob` and `deepmerge` (through `@rollup/plugin-node-resolve`) inside `workbox-build`, which vite-plugin-pwa runs only during `vite build`, on the project's own config and build output. Runtime-injected styles that affect the CSP are listed in [security.md](security.md).
