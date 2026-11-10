@@ -3,6 +3,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import type { DeviceId } from '../model/device';
 import type { SensorMetric, SensorReading } from '../model/reading';
+import type { DeviceSeries } from './device-series';
 import type { DeviceState, DeviceStatus, TelemetryState, TelemetryStore } from './telemetry-store';
 
 // How components must subscribe (see docs/architecture.md):
@@ -26,6 +27,17 @@ export const selectSeriesVersion =
   (id: DeviceId) =>
   (state: TelemetryState): number =>
     state.devices.get(id)?.seriesVersion ?? 0;
+
+/** A device's ring buffers: null until the device is known, then the same object forever. */
+export const selectDeviceSeries =
+  (id: DeviceId) =>
+  (state: TelemetryState): DeviceSeries | null =>
+    state.devices.get(id)?.series ?? null;
+/** A device's status alone (null until known): changes only on a status change. */
+export const selectDeviceStatus =
+  (id: DeviceId) =>
+  (state: TelemetryState): DeviceStatus | null =>
+    state.devices.get(id)?.status ?? null;
 
 /** One metric of a reading (a switch, not an index: metric names never index objects). */
 export function readingValue(reading: SensorReading, metric: SensorMetric): number | undefined {
@@ -117,6 +129,10 @@ export function createTelemetryHooks(store: TelemetryStore) {
     useStatusSignature: () => useStore(store, selectStatusSignature),
     /** Online/stale/offline counts, shallow-compared so it re-renders only when a count changes. */
     useStatusSummary: () => useStore(store, useShallow(selectStatusSummary)),
+    /** A device's ring buffers; re-renders once, when the device first appears. */
+    useDeviceSeries: (id: DeviceId) => useStore(store, selectDeviceSeries(id)),
+    /** A device's status; re-renders only when it changes. */
+    useDeviceStatus: (id: DeviceId) => useStore(store, selectDeviceStatus(id)),
     /** Ring buffer version of one device, for charts that read the buffers directly. */
     useSeriesVersion: (id: DeviceId) => useStore(store, selectSeriesVersion(id)),
   };

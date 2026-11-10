@@ -15,6 +15,8 @@ const liveHooks = /* @__PURE__ */ createTelemetryHooks(telemetryStore);
 // Live-stream hooks carry a `Live` prefix so call sites never confuse them with the server-state
 // hooks (useDevices, useDevice, ...) in api/hooks.ts: different data, different store (docs/caching.md).
 export const useLiveDevice = liveHooks.useDevice;
+export const useLiveDeviceSeries = liveHooks.useDeviceSeries;
+export const useLiveDeviceStatus = liveHooks.useDeviceStatus;
 export const useLiveDeviceIds = liveHooks.useDeviceIds;
 export const useLiveConnection = liveHooks.useConnection;
 export const useLiveMode = liveHooks.useMode;
