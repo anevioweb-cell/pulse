@@ -41,7 +41,15 @@
     - [x] Devices table: virtualized, sortable, searchable, filterable, state in the URL (ADR 0022, ADR 0024)
     - [x] Real-browser verification, measurements and documentation ([performance.md](performance.md#phase-5a-shell-routing-overview-devices-table), [architecture.md](architecture.md#ui-layer-phase-5a))
   - [ ] 5B: Device detail page with charts (history from the Query cache plus the live ring buffer)
+    - [ ] Initial-bundle investigation (the `createLucideIcon` chunk) and a Phase 6 candidate list
+    - [ ] Chart data layer in plain TypeScript: range model and range-to-source rule (ADR 0026), series adapter with gaps, redraw scheduler with pause
+    - [ ] Lazy uPlot `TimeSeriesChart` in `src/shared/ui`: tokens, theme changes, resize, thresholds, tooltip, RTL rule (ADR 0025)
+    - [ ] Device detail page: header, states, one chart per metric, range and pause controls in the URL, alert-rule thresholds
+    - [ ] Chart accessibility: summary labels, data-table alternative, polite state announcements (ADR 0027)
+    - [ ] Real-browser verification, measurements and documentation (including docs/accessibility.md)
   - [ ] 5C: Alerts page (history and rule editing) and Settings page
+  - [ ] 5D: Visual identity pass (after 5C, before Phase 6)
+    - Note: the current look is clean but generic; the goal is a distinctive, non-template identity. 5B and 5C do not start any visual redesign: they build with the existing tokens only and keep every color, font and spacing token-driven, so the redesign needs no component rewrites.
 - [ ] Phase 6: Performance
 - [ ] Phase 7: Security (threat model, CSP, XSS hardening)
   - Note: CI must run `npm audit --omit=dev` (production dependencies only). The full audit currently reports 15 findings (13 moderate, 2 low), all in dev or build-time packages: a `minimatch` advisory inside `typescript-eslint` (see [ADR 0002](adr/0002-tooling-versions-and-import-boundaries.md)), a `glob` advisory inside Storybook's docgen plugin, and, since Phase 4B, `glob` and `deepmerge` (through `@rollup/plugin-node-resolve`) inside `workbox-build`, which vite-plugin-pwa runs only during `vite build`, on the project's own config and build output. Runtime-injected styles that affect the CSP are listed in [security.md](security.md).
