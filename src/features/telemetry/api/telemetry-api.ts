@@ -25,6 +25,11 @@ export type ReadingsRequest = ReadingsQueryInput & { deviceId: string };
  */
 export interface TelemetryApi {
   readonly mode: TelemetryMode;
+  /**
+   * Whether calls need the network. False for DemoTelemetryApi (everything runs in the browser),
+   * so its queries are not paused while the browser reports offline; true for HttpTelemetryApi.
+   */
+  readonly requiresNetwork: boolean;
   listDevices: (options?: CallOptions) => Promise<DeviceSummary[]>;
   getDevice: (id: string, options?: CallOptions) => Promise<DeviceDetail>;
   getReadings: (request: ReadingsRequest, options?: CallOptions) => Promise<HistoricalReadings>;

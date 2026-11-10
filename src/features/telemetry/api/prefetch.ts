@@ -29,7 +29,8 @@ export const recentReadingsQuery = (
 ) => readingsQuery(api, recentReadingsRequest(deviceId, now()), now);
 
 /**
- * Prefetches a device's detail and default readings range. Skipped offline. `client.query`
+ * Prefetches a device's detail and default readings range. Skipped offline when the API needs the
+ * network (Live Mode); Demo Mode needs none, so it prefetches anyway. `client.query`
  * returns fresh data without fetching (each query's staleTime) and joins a request already in
  * flight, so repeated hovers cost nothing. Never throws (prefetch errors are not shown).
  */
@@ -39,7 +40,7 @@ export function prefetchDevice(
   deviceId: string,
   now: () => number = () => Date.now(),
 ): Promise<void> {
-  if (!onlineManager.isOnline()) return Promise.resolve();
+  if (api.requiresNetwork && !onlineManager.isOnline()) return Promise.resolve();
   const ignore = () => undefined; // a failed prefetch is not an error anyone sees
   return Promise.all([
     client.query(deviceQuery(api, deviceId)).catch(ignore),

@@ -6,6 +6,7 @@ export { createHttpClient } from './http-client';
 export type { HttpClient, HttpClientOptions, HttpMethod, RequestOptions } from './http-client';
 export { retryDelay, shouldRetry } from './retry';
 export { createQueryClient } from './query-client';
+export type { QueryClientOptions } from './query-client';
 export {
   createIdbStorage,
   createMemoryStorage,

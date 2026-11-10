@@ -48,6 +48,7 @@ function stubApi(overrides: Partial<TelemetryApi>): TelemetryApi {
   const demo = new DemoTelemetryApi({ now: () => NOW });
   return {
     mode: 'live',
+    requiresNetwork: true,
     listDevices: (options) => demo.listDevices(options),
     getDevice: (id, options) => demo.getDevice(id, options),
     getReadings: (request, options) => demo.getReadings(request, options),

@@ -64,6 +64,7 @@ function contract<Output>(schema: z.ZodMiniType<Output>, value: unknown): Output
  */
 export class DemoTelemetryApi implements TelemetryApi {
   readonly mode = 'demo' as const;
+  readonly requiresNetwork = false;
   private readonly data: SimulatedTelemetryData;
   private readonly rules: AlertRuleStore;
   private readonly ruleStorage: DemoRuleStorage;

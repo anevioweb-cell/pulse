@@ -10,6 +10,7 @@ import { systemScheduler } from '../transport/scheduler';
 import { TelemetryApiProvider } from './api-context';
 import { DemoTelemetryApi } from './demo-telemetry-api';
 import { recentReadingsRequest, usePrefetchDevice } from './prefetch';
+import { createTelemetryQueryClient } from './query-client';
 import { telemetryKeys } from './query-keys';
 
 import type { TelemetryApi } from './telemetry-api';
@@ -55,6 +56,7 @@ beforeEach(() => {
   const demo = new DemoTelemetryApi({ now: () => Date.now(), ruleStorage: null });
   api = {
     mode: 'demo',
+    requiresNetwork: false,
     listDevices: (o) => demo.listDevices(o),
     getDevice: (id, o) => {
       calls.push(`detail ${id}`);
@@ -142,12 +144,22 @@ describe('usePrefetchDevice', () => {
     expect(calls.filter((call) => call === 'detail esp32-01')).toHaveLength(2);
   });
 
-  it('does not prefetch while offline', async () => {
+  it('does not prefetch while offline when the API needs the network (Live Mode)', async () => {
+    api = { ...api, mode: 'live', requiresNetwork: true };
     onlineManager.setOnline(false);
     renderLinks('esp32-01');
     fireEvent.pointerEnter(screen.getByRole('link'));
     await flush(DELAY * 2);
     expect(calls).toEqual([]);
+  });
+
+  it('still prefetches while offline in Demo Mode, which needs no network', async () => {
+    client = createTelemetryQueryClient(api);
+    onlineManager.setOnline(false);
+    renderLinks('esp32-01');
+    fireEvent.pointerEnter(screen.getByRole('link'));
+    await flush(DELAY * 2);
+    expect(calls).toEqual(['detail esp32-01', 'readings esp32-01']);
   });
 });
 

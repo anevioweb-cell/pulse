@@ -113,6 +113,7 @@ export {
   readingsQuery,
 } from './api/query-options';
 export { TelemetryApiProvider, useTelemetryApi } from './api/api-context';
+export { createTelemetryQueryClient } from './api/query-client';
 export {
   useAlertHistory,
   useAlertRules,

@@ -38,6 +38,7 @@ const segment = (id: string) => encodeURIComponent(id);
 /** Live Mode repository: the REST API of the telemetry server (mock server or real backend). */
 export class HttpTelemetryApi implements TelemetryApi {
   readonly mode = 'live' as const;
+  readonly requiresNetwork = true;
   private readonly http: HttpClient;
 
   constructor({ baseUrl, fetch }: HttpTelemetryApiOptions) {

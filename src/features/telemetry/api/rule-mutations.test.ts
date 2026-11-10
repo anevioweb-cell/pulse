@@ -60,6 +60,7 @@ function controlledApi() {
   };
   const api: TelemetryApi = {
     mode: 'demo',
+    requiresNetwork: false,
     listDevices: (o) => truth.listDevices(o),
     getDevice: (id, o) => truth.getDevice(id, o),
     getReadings: (r, o) => truth.getReadings(r, o),
