@@ -34,6 +34,20 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["vite", "preview", "--port", "4173", "--strictPort"],
       "port": 4173
+    },
+    {
+      "name": "bench-charts",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "scripts/bench/charts",
+        "--config",
+        "vite.config.ts",
+        "--port",
+        "5182",
+        "--strictPort"
+      ],
+      "port": 5182
     }
   ]
 }
