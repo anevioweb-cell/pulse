@@ -85,7 +85,8 @@ describe('service worker behavior', () => {
     expect(worker).not.toMatch(
       /registerRoute\([^)]*(StaleWhileRevalidate|CacheFirst|NetworkFirst)/,
     );
-    expect(worker).toContain('createHandlerBoundToURL(k)');
+    // The argument is a minified name that changes with the bundle.
+    expect(worker).toMatch(/createHandlerBoundToURL\([\w$]+\)/);
     expect(worker).toContain('denylist:[/^\\/api(\\/|$)/]');
   });
 
