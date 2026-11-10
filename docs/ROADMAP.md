@@ -31,15 +31,15 @@
     - [x] Service worker and web app manifest with a user-driven update flow (ADR 0020)
     - [x] Measurements and documentation ([caching.md](caching.md), [security.md](security.md#service-worker), [performance.md](performance.md#phase-4b-service-worker-banners-connectivity))
 - [ ] Phase 5: Dashboard features (charts, devices table, alerts, settings)
-  - [ ] 5A: App shell, routing, Overview page, Devices table
-    - [ ] Demo Mode queries run offline (`networkMode` from the active API)
-    - [ ] App bootstrap: one place builds the API, QueryClient and telemetry session per mode, with clean teardown on switch (ADR 0023)
-    - [ ] Persisted mode and Live URL preference, mode switch in the header, "Simulated data" indicator
-    - [ ] Routing with lazy routes, per-route error boundaries, validated params, 404 (ADR 0021)
-    - [ ] Layout shell: sidebar and bottom navigation, skip link, theme toggle, route focus and title management
-    - [ ] Overview page: KPI cards, live device grid, loading, empty, error and waiting states
-    - [ ] Devices table: virtualized, sortable, searchable, filterable, state in the URL (ADR 0022)
-    - [ ] Real-browser verification, measurements and documentation
+  - [x] 5A: App shell, routing, Overview page, Devices table
+    - [x] Demo Mode queries run offline (`networkMode` from the active API)
+    - [x] App bootstrap: one place builds the API, QueryClient and telemetry session per mode, with clean teardown on switch (ADR 0023)
+    - [x] Persisted mode and Live URL preference, mode switch in the header, "Simulated data" indicator
+    - [x] Routing with lazy routes, per-route error boundaries, validated params, 404 (ADR 0021)
+    - [x] Layout shell: sidebar and bottom navigation, skip link, theme toggle, route focus and title management
+    - [x] Overview page: KPI cards, live device grid, loading, empty, error and waiting states
+    - [x] Devices table: virtualized, sortable, searchable, filterable, state in the URL (ADR 0022, ADR 0024)
+    - [x] Real-browser verification, measurements and documentation ([performance.md](performance.md#phase-5a-shell-routing-overview-devices-table), [architecture.md](architecture.md#ui-layer-phase-5a))
   - [ ] 5B: Device detail page with charts (history from the Query cache plus the live ring buffer)
   - [ ] 5C: Alerts page (history and rule editing) and Settings page
 - [ ] Phase 6: Performance
