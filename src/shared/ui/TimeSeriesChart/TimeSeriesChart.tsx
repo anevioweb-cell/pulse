@@ -407,7 +407,7 @@ function drawThresholds(chart: uPlot, thresholds: readonly ChartThreshold[], pal
   ctx.lineWidth = CHART.THRESHOLD_WIDTH_PX * ratio;
   ctx.setLineDash(CHART.THRESHOLD_DASH_PX.map((length) => length * ratio));
   ctx.font = scaledFont(palette.font, ratio);
-  ctx.textAlign = 'right';
+  ctx.textAlign = 'left';
   ctx.textBaseline = 'bottom';
   for (const threshold of thresholds) {
     const y = Math.round(chart.valToPos(threshold.value, 'y', true));
@@ -419,7 +419,8 @@ function drawThresholds(chart: uPlot, thresholds: readonly ChartThreshold[], pal
     ctx.lineTo(bbox.left + bbox.width, y);
     ctx.stroke();
     const gap = CHART.THRESHOLD_LABEL_GAP_PX * ratio;
-    ctx.fillText(threshold.label, bbox.left + bbox.width - gap, y - gap);
+    // At the plot's start: the live edge (the end) is where new data is drawn.
+    ctx.fillText(threshold.label, bbox.left + gap, y - gap);
   }
   ctx.restore();
 }
