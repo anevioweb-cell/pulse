@@ -447,6 +447,70 @@ Same method as the component cost table above, but against the end-of-4A app (79
 | StatusIndicator | 89.62 kB        | +9.78 kB          | Almost all shared base: no icons, no dependencies                                          |
 | Both            | 91.59 kB        | +11.75 kB         |                                                                                            |
 
+## Phase 5A: shell, routing, Overview, Devices table
+
+**Method:** `npm run build` (Vite 8), gzip sizes as reported by Vite. Intermediate figures were measured on this branch's commits as they were made. "Initial JS" is the entry chunk plus the chunks `index.html` preloads (`<link rel="modulepreload">`): all are needed for the first render. Chunk contents were read from the visualizer data of `npm run analyze` (`dist/stats.html`, module to chunk). Rollup names shared chunks after one of their modules, so `ErrorState-*.js` and `createLucideIcon-*.js` are shared app chunks, not those components alone.
+
+### Production bundle vs the end of 4B
+
+| Build                                                        | Initial JS (gzip)        | CSS (gzip)  | Delta (initial JS) |
+| ------------------------------------------------------------ | ------------------------ | ----------- | ------------------ |
+| End of 4B (`42cfc2d`)                                        | 99.40 kB (1 chunk)       | 7.23 kB     | n/a                |
+| Session controller, header data source and badge (`c155e21`) | 137.52 kB (1 chunk)      | 7.23 kB     | +38.12 kB          |
+| Routes, shell and PageHeader (`cff5de1`)                     | 172.43 kB (1 chunk)      | 7.80 kB     | +34.91 kB          |
+| Overview (`980419d`)                                         | 174.77 kB (3 chunks)     | 8.18 kB     | +2.34 kB           |
+| Devices table and the first-reading fix (end of 5A)          | **177.58 kB** (4 chunks) | **8.46 kB** | +2.81 kB           |
+
+End of 5A in detail: entry `index-*.js` 100.19 kB, `createLucideIcon-*.js` 33.13 kB (react-router and shared icons), `ErrorState-*.js` 29.48 kB (TanStack Query, zod, zustand, telemetry code), `PageHeader-*.js` 14.78 kB (React, `tailwind-merge`, `clsx`). Raw: 550.48 kB.
+
+**Why the initial JS grew by 78.18 kB:**
+
+- **The session (+38.12 kB).** `TelemetryService`, `SimulatorTransport`, both `TelemetryApi` implementations with `HistoryModel`, persistence (`idb-keyval`) and the HTTP client used to be dropped as unused. The first page needs them now.
+- **Routing and the shell (+34.91 kB).** React Router 8 data routes, the navigation, and the header controls, including the Dialog and Switch of the data-source control.
+
+**Lazy route chunks (gzip):**
+
+| Chunk                | Gzip     | Contents                                                                                                      |
+| -------------------- | -------- | ------------------------------------------------------------------------------------------------------------- |
+| `DevicesPage-*.js`   | 51.66 kB | TanStack Table v9, TanStack Virtual, Radix DropdownMenu and Select, floating-ui, the table and its URL parser |
+| `OverviewPage-*.js`  | 2.64 kB  | KPI row, grid, card                                                                                           |
+| `use-last-seen-*.js` | 2.29 kB  | Device display pieces shared by both pages (status badge, formatting, last-seen label)                        |
+| `DevicePage-*.js`    | 0.47 kB  | Placeholder                                                                                                   |
+| `SettingsPage-*.js`  | 0.22 kB  | Placeholder                                                                                                   |
+| `AlertsPage-*.js`    | 0.22 kB  | Placeholder                                                                                                   |
+
+**Not in the initial chunks** (checked in the analyze build): `@tanstack/react-table`, `@tanstack/table-core`, `@tanstack/react-virtual`, `@radix-ui/react-dropdown-menu`, `@radix-ui/react-select`, `@floating-ui/*`. They are only in `DevicesPage-*.js`.
+
+### Precache
+
+vite-plugin-pwa reports **25 entries, 969.65 KiB**, up from 15 entries and 526.64 KiB at the end of 4B. The new entries are the route chunks, the shared chunks and the simulator worker (`simulator.worker-*.js`, 35.59 kB raw), which is now reachable from the app. `sw.js` is 16,539 bytes.
+
+### Render counts with live data
+
+Measured in Vitest with React Profiler around each real `DeviceCard` and `DeviceRow`. The live store is fed by the real `TelemetryService` through a hand-driven transport, one publish per frame.
+
+| Scenario                                                 | Result                                                                     |
+| -------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Overview, 12 devices, all 12 update in each of 10 frames | 120 card renders (10 per card), KPI row: 10 commits                        |
+| Devices table, 12 devices, same updates                  | 120 row renders (10 per row)                                               |
+| Overview, a reading for device A, twice                  | A: 2 → 4 renders; all 11 other cards unchanged                             |
+| Overview, device-list refetch with unchanged data        | 0 card renders (no `memo` needed; TanStack tracks the fields a hook reads) |
+| Table, 200 synthetic devices                             | 21 of 200 rows rendered                                                    |
+| Table, a reading for one visible device                  | 1 row render                                                               |
+| Table, a reading for an off-screen device                | 0 row renders                                                              |
+| Table, readings for 5 visible devices in one frame       | 5 row renders                                                              |
+
+A device's first reading renews the table's sort snapshot once (ADR 0024), which re-renders the visible rows once. The steady-state figures above are measured after it.
+
+### Browser checks (Chromium in the desktop app, `vite preview` of the production build)
+
+- **Demo Mode:** live values change on the Overview within 3 s, with no console messages.
+- **Routes:** client navigation, a deep-link load of `/devices/esp32-03`, the 404 page, and invalid ids (`__proto__`, encoded `<script>`) all work.
+- **Table:** sorting and search write the URL with `replace` (the history length did not grow), and a reload restores the sort, the search and the row count.
+- **Mode switch:** both ways against the mock server (`--origin http://localhost:4174`). The REST request returned 200 and all 12 devices came online; an `http://` URL was refused inline.
+- **Service worker:** with the preview server stopped, the shell loaded from the precache and Demo values kept updating. The only console error was `ERR_CONNECTION_REFUSED`, consistent with the probe fetch made to confirm that the server was down.
+- **Layout:** light, dark, LTR and RTL (`dir` and `lang` set by hand) at 1280 px and 375 px on `/` and `/devices`: no horizontal overflow in all 16 combinations, and the sidebar and bottom bar mirror.
+
 ## Phase 6 candidates
 
 Measured costs worth revisiting in Phase 6, each with its possible mitigation:
@@ -457,6 +521,10 @@ Measured costs worth revisiting in Phase 6, each with its possible mitigation:
   - Move restore (parse and validate) to a worker and hand over validated data.
   - Persist readings in a compact numeric form (typed arrays or deltas) that validates faster than JSON arrays of numbers.
 - **Persistence write near the cap: 12 to 14 ms (p50)**, debounced to at most once per settled second. It could move to a worker with the restore.
-- **Main bundle 99.40 kB gzip.** After React, the largest dependencies in the treemap are `@tanstack/query-core` (14.30 kB), `tailwind-merge` (11.76 kB) and `zod` (11.52 kB). Options for `tailwind-merge`: a smaller `cn()` without class merging for components that never take conflicting classes, or code-splitting the status banners so they load after the first render.
+- **Initial JS 177.58 kB gzip (Phase 5A).** The demo data layer (`HistoryModel`, `DemoTelemetryApi`) and the simulator transport load with every first visit, also in Live Mode. Load each mode's session code with a dynamic import in the `SessionController`. The routing step (+34.91 kB) was not split between React Router and the shell; measure React Router's share before choosing.
+- **Precache 969.65 KiB.** Every route chunk is precached, the 51.66 kB gzip table chunk included. Consider precaching lazy chunks at a lower priority, or only after the first idle period.
+- **Table scrolling** was not measured in a browser. By construction, the table re-renders all visible rows on scroll (rows are not memoized); `memo` on `DeviceRow` is a candidate if a profile shows it matters.
+- **Alert history KPI:** it computes 24 h of alerts for the whole fleet in the browser (Demo Mode) on each visit. Measure it, and cache or move it to a worker if needed.
+- **Main bundle 99.40 kB gzip (end of 4B).** After React, the largest dependencies in the treemap are `@tanstack/query-core` (14.30 kB), `tailwind-merge` (11.76 kB) and `zod` (11.52 kB). Options for `tailwind-merge`: a smaller `cn()` without class merging for components that never take conflicting classes, or code-splitting the status banners so they load after the first render.
 - **The Arabic font (46 KB) is precached for every user.** The precache could exclude it and let it load on demand. RTL would then need a network on its first offline use.
 - **Demo readings on the main thread:** a 7-day readings request takes about 7.5 ms in Node (Phase 4A). Measure it in browsers, and move it to the simulator worker if needed.
