@@ -35,6 +35,8 @@ export interface ChartThreshold {
 /** Imperative API: data goes to the canvas without a React render. */
 export interface TimeSeriesChartHandle {
   setData: (data: TimeSeriesData, window: ChartWindow) => void;
+  /** Replaces the accessible summary (for example with new latest, min and max values). */
+  setLabel: (label: string) => void;
 }
 
 /** Chart palette slots (`--color-chart-1` to `--color-chart-6`, colorblind-safe). */
@@ -159,6 +161,7 @@ export function TimeSeriesChart({
 }: TimeSeriesChartProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const plotRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<uPlot | null>(null);
   const dataRef = useRef<{ data: TimeSeriesData; window: ChartWindow | null }>({
@@ -176,6 +179,12 @@ export function TimeSeriesChart({
       setData(data, window) {
         dataRef.current = { data, window };
         chartRef.current?.setData([data.xs, data.ys] as uPlot.AlignedData);
+      },
+      setLabel(text) {
+        const image = imageRef.current;
+        if (image && image.getAttribute('aria-label') !== text) {
+          image.setAttribute('aria-label', text);
+        }
       },
     }),
     [],
@@ -254,7 +263,7 @@ export function TimeSeriesChart({
 
   return (
     <div ref={wrapperRef} className={cn(chartVariants({ size }), className)} {...props}>
-      <div role="img" aria-label={label} className="size-full">
+      <div ref={imageRef} role="img" aria-label={label} className="size-full">
         <div ref={plotRef} dir="ltr" className="relative size-full">
           {/* Positioned in the plot's left-to-right frame; its content takes the page direction. */}
           <div

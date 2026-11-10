@@ -143,6 +143,16 @@ describe('TimeSeriesChart', () => {
     expect(onRender).toHaveBeenCalledTimes(renders);
   });
 
+  it('replaces its accessible summary without rendering React', () => {
+    const { ref, onRender } = renderChart();
+    const renders = onRender.mock.calls.length;
+    act(() => ref.current?.setLabel('Temperature over the last minute: latest 22.0 °C.'));
+    expect(
+      screen.getByRole('img', { name: 'Temperature over the last minute: latest 22.0 °C.' }),
+    ).toBeInTheDocument();
+    expect(onRender).toHaveBeenCalledTimes(renders);
+  });
+
   it('uses the given window as the time scale, whatever the data covers', () => {
     const { ref } = renderChart();
     act(() => ref.current?.setData(DATA, WINDOW));
