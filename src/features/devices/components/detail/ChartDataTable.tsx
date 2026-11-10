@@ -17,20 +17,39 @@ export interface TableSnapshot {
   readonly at: number;
 }
 
-/** Copies the newest `maxRows` real samples of a drawn series (gap markers are not samples). */
-export function snapshotOf(series: AlignedSeries, at: number, maxRows: number): TableSnapshot {
+/**
+ * Copies the newest `maxRows` real samples of a drawn series inside the window: gap markers are not
+ * samples, and the one sample before `from` (drawn only so the line enters from the edge) is not in
+ * the window, so it is not listed (the summary label leaves it out too).
+ */
+export function snapshotOf(
+  series: AlignedSeries,
+  from: number,
+  at: number,
+  maxRows: number,
+): TableSnapshot {
   const rows: { t: number; value: number }[] = [];
   let total = 0;
   for (let index = series.xs.length - 1; index >= 0; index -= 1) {
     const value = series.ys.at(index);
     const t = series.xs.at(index);
-    if (value === null || value === undefined || t === undefined) continue;
+    if (value === null || value === undefined || t === undefined || t < from) continue;
     total += 1;
     if (rows.length < maxRows) rows.push({ t, value });
   }
   return { rows, total, at };
 }
 
+// Tenths of a second: devices may report up to 10 times per second, and rows must not look
+// duplicated. The caption's time keeps whole seconds.
+const rowTimeFormat = new Intl.DateTimeFormat(undefined, {
+  month: 'short',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  fractionalSecondDigits: 1,
+});
 const timeFormat = new Intl.DateTimeFormat(undefined, {
   month: 'short',
   day: 'numeric',
@@ -102,7 +121,7 @@ export function ChartDataTable({
             ) : (
               snapshot.rows.map((row) => (
                 <tr key={row.t} className="border-t border-border">
-                  <td className="px-3 py-1 tabular-nums">{timeFormat.format(row.t)}</td>
+                  <td className="px-3 py-1 tabular-nums">{rowTimeFormat.format(row.t)}</td>
                   <td className="px-3 py-1 text-end tabular-nums">
                     {formatMetric(metric, row.value)}
                   </td>

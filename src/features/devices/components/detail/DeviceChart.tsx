@@ -137,7 +137,9 @@ export function DeviceChart({
 
   const openTable = () => {
     const last = lastDrawRef.current;
-    setTable(last ? snapshotOf(last.series, last.at, DEVICE_CHART.TABLE_MAX_ROWS) : null);
+    setTable(
+      last ? snapshotOf(last.series, last.window.from, last.at, DEVICE_CHART.TABLE_MAX_ROWS) : null,
+    );
   };
 
   const decimals = DEVICE_DISPLAY.DECIMALS.get(metric) ?? 0;
