@@ -128,6 +128,21 @@ describe('route accessibility', () => {
     expect(devices).toHaveAttribute('tabindex', '-1'); // focusable by script, not in the tab order
   });
 
+  it('keeps focus on the device page heading when the device finishes loading', async () => {
+    const { user } = setup('/devices');
+    await heading(messages.pages.devices.title);
+    const table = await screen.findByRole('table');
+    const [link] = within(table).getAllByRole('link');
+    if (!link) throw new Error('no device link');
+    const name = link.textContent;
+    await user.click(link);
+    // The loading header is the same element as the loaded one: only its text changes.
+    const loaded = await screen.findByRole('heading', { level: 1, name });
+    await waitFor(() => {
+      expect(loaded).toHaveFocus();
+    });
+  });
+
   it('does not move focus when only the query string changes', async () => {
     const { router } = setup('/devices');
     const devices = await heading(messages.pages.devices.title);
