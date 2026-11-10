@@ -75,6 +75,8 @@ Invalid data is handled explicitly (dropped, logged, or surfaced), never cast th
 
 - Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`, etc.), with an optional scope, e.g. `feat(telemetry): add reconnecting socket`.
 - Small, focused commits: one logical change each.
+- One commit = one change = a subject that matches it. Never put the docs for one change inside another change's commit.
+- After ANY failed commit (for example a commitlint or pre-commit hook rejection), run `git status` and `git diff --cached --stat` and verify the staged files before retrying, so unrelated staged files never ride along in the next commit.
 - Never run state-changing git commands (`checkout`, `stash`, `reset`, `switch`, `restore` on tracked files) for diagnostics or comparisons. Use read-only commands (`git show <rev>:<path>`, `git diff <a> <b>`, `git log`), or a separate `git worktree add` checkout. Before and after any risky git operation, check `git status` and the current branch (`git branch --show-current`).
 - Never add `Co-Authored-By` trailers, "Generated with Claude Code" lines, session links, or any other AI attribution to commit messages, PR descriptions, or code comments. Commits are authored solely by the repository owner. This is also enforced in `.claude/settings.json` (`attribution`).
 
