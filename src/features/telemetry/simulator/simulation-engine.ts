@@ -1,6 +1,7 @@
 import { PROTOCOL, SENSOR_RANGES, SIMULATOR } from '../config';
 import { createDeviceProfile } from './device-profile';
-import { deriveSeed, gaussian, mulberry32, TAU, uniform } from './prng';
+import { HistoryModel } from './history-model';
+import { deriveSeed, gaussian, mulberry32, uniform } from './prng';
 
 import type { Tunable } from '../config';
 import type { DeviceId } from '../model/device';
@@ -10,7 +11,8 @@ import type {
   ReadingMessage,
   TelemetryMessage,
 } from '../model/protocol';
-import type { SensorReading } from '../model/reading';
+import type { SensorMetric, SensorReading } from '../model/reading';
+import type { DeviceProfile } from './device-profile';
 import type { Random } from './prng';
 
 export type SimulatorFaultKind = 'dropout' | 'spike' | 'low_battery';
@@ -44,8 +46,14 @@ interface SimulatedDevice {
   readonly phase: number;
   readonly baseline: { temperature: number; humidity: number; pressure: number; signal: number };
   readonly drainPerReading: number;
+  /** The profile the HistoryModel samples, so live values follow the device's history. */
+  readonly profile: DeviceProfile;
   drift: { temperature: number; humidity: number; pressure: number; signal: number };
-  battery: number;
+  /**
+   * Battery level after a `low_battery` fault, draining by `drainPerReading` until depletion.
+   * Null otherwise: the battery then follows the HistoryModel's discharge curve.
+   */
+  faultBattery: number | null;
   seq: number;
   nextDueAt: number;
   status: DeviceStatus;
@@ -54,7 +62,6 @@ interface SimulatedDevice {
   spikeNext: boolean;
 }
 
-const FULL_BATTERY = 100;
 const MS_PER_SECOND = 1000;
 const HALF = 0.5;
 const DECIMAL_BASE = 10;
@@ -67,9 +74,11 @@ type Range = Readonly<{ min: number; max: number }>;
  * messages that were due. Each device has its own PRNG stream, so device N behaves the same
  * regardless of fleet size or rate changes.
  *
- * Behaviors: smooth drift (mean-reverting random walk), a compressed daily cycle, rare spikes,
- * dropouts (silence, then `device_online` again), battery drain with low battery, depletion
- * (`device_offline` with reason `low_battery`) and later recharge.
+ * Values follow the HistoryModel (the same profile, daily cycle and smooth noise that REST history
+ * is computed from) plus a small mean-reverting random walk, bounded by SIMULATOR.DRIFT_LIMIT_STD,
+ * so live data and REST history of the same device agree (ADR 0026). On top of that: rare spikes,
+ * dropouts (silence, then `device_online` again), and after a `low_battery` fault, a draining
+ * battery, depletion (`device_offline` with reason `low_battery`) and later recharge.
  */
 export class SimulationEngine {
   private readonly seed: number;
@@ -77,6 +86,10 @@ export class SimulationEngine {
   private readonly devices: SimulatedDevice[] = [];
   /** Engine-level randomness (fault targeting), separate from per-device streams. */
   private readonly random: Random;
+  /** Only its `sample()` is used: the history value of a profile at a time. */
+  private readonly history: HistoryModel;
+  /** Bound of each metric's random walk (see SIMULATOR.DRIFT_LIMIT_STD). */
+  private readonly driftLimits: SimulatedDevice['drift'];
   private intervalMs: number;
   private time: number;
 
@@ -84,6 +97,13 @@ export class SimulationEngine {
     this.tuning = { ...SIMULATOR, ...tuning };
     this.seed = seed ?? this.tuning.DEFAULT_SEED;
     this.random = mulberry32(deriveSeed(this.seed, -1));
+    this.history = new HistoryModel({ seed: this.seed, deviceCount: 1, tuning: this.tuning });
+    this.driftLimits = {
+      temperature: this.driftLimit(this.tuning.TEMPERATURE_DRIFT_STEP),
+      humidity: this.driftLimit(this.tuning.HUMIDITY_DRIFT_STEP),
+      pressure: this.driftLimit(this.tuning.PRESSURE_DRIFT_STEP),
+      signal: this.driftLimit(this.tuning.SIGNAL_DRIFT_STEP),
+    };
     this.time = startTime;
     this.intervalMs = MS_PER_SECOND / this.clampRate(rateHz ?? this.tuning.DEFAULT_RATE_HZ);
     this.setDeviceCount(deviceCount ?? this.tuning.DEFAULT_DEVICE_COUNT);
@@ -146,7 +166,10 @@ export class SimulationEngine {
         device.spikeNext = true;
         return [];
       case 'low_battery':
-        device.battery = Math.min(device.battery, this.tuning.LOW_BATTERY_THRESHOLD - 1);
+        device.faultBattery = Math.min(
+          device.faultBattery ?? this.historyValue(device, 'battery', this.time),
+          this.tuning.LOW_BATTERY_THRESHOLD - 1,
+        );
         return [];
       case 'dropout':
         this.startDropout(device, this.time);
@@ -180,7 +203,8 @@ export class SimulationEngine {
       baseline: profile.baseline,
       drainPerReading: profile.drainPerReading,
       drift: { temperature: 0, humidity: 0, pressure: 0, signal: 0 },
-      battery: profile.initialBattery,
+      profile,
+      faultBattery: null,
       seq: 0,
       // Spread devices across the first interval so readings do not arrive in bursts.
       nextDueAt: this.time + profile.random() * this.intervalMs,
@@ -197,7 +221,7 @@ export class SimulationEngine {
 
       if (device.status !== 'online') {
         if (at < device.resumeAt) continue;
-        if (device.status === 'depleted') device.battery = FULL_BATTERY;
+        if (device.status === 'depleted') device.faultBattery = null;
         device.status = 'online';
         out.push(this.onlineMessage(device, at));
       }
@@ -207,8 +231,10 @@ export class SimulationEngine {
         continue;
       }
 
-      device.battery = Math.max(0, device.battery - device.drainPerReading);
-      if (device.battery <= 0) {
+      if (device.faultBattery !== null) {
+        device.faultBattery = Math.max(0, device.faultBattery - device.drainPerReading);
+      }
+      if (device.faultBattery === 0) {
         device.status = 'depleted';
         device.resumeAt = at + this.tuning.RECHARGE_DELAY_MS;
         out.push(this.offlineMessage(device, at, 'low_battery'));
@@ -229,21 +255,21 @@ export class SimulationEngine {
 
   private nextValues(device: SimulatedDevice, at: number): SensorReading {
     const t = this.tuning;
-    const walk = (current: number, step: number) =>
-      current * (1 - t.DRIFT_REVERSION) + gaussian(device.random) * step;
+    const limits = this.driftLimits;
+    const walk = (current: number, step: number, limit: number) =>
+      this.clamp(
+        { min: -limit, max: limit },
+        current * (1 - t.DRIFT_REVERSION) + gaussian(device.random) * step,
+      );
     device.drift = {
-      temperature: walk(device.drift.temperature, t.TEMPERATURE_DRIFT_STEP),
-      humidity: walk(device.drift.humidity, t.HUMIDITY_DRIFT_STEP),
-      pressure: walk(device.drift.pressure, t.PRESSURE_DRIFT_STEP),
-      signal: walk(device.drift.signal, t.SIGNAL_DRIFT_STEP),
+      temperature: walk(device.drift.temperature, t.TEMPERATURE_DRIFT_STEP, limits.temperature),
+      humidity: walk(device.drift.humidity, t.HUMIDITY_DRIFT_STEP, limits.humidity),
+      pressure: walk(device.drift.pressure, t.PRESSURE_DRIFT_STEP, limits.pressure),
+      signal: walk(device.drift.signal, t.SIGNAL_DRIFT_STEP, limits.signal),
     };
 
-    // Daily cycle: warmer and drier in the "afternoon", per-device phase.
-    const cycle = Math.sin(TAU * (at / t.DAY_CYCLE_MS + device.phase));
-    let temperature =
-      device.baseline.temperature +
-      device.drift.temperature +
-      t.TEMPERATURE_CYCLE_AMPLITUDE * cycle;
+    // The history value already contains the baseline, the daily cycle and the smooth noise.
+    let temperature = this.historyValue(device, 'temperature', at) + device.drift.temperature;
     if (device.spikeNext || device.random() < t.SPIKE_PROBABILITY) {
       device.spikeNext = false;
       temperature += (device.random() < HALF ? -1 : 1) * t.SPIKE_MAGNITUDE;
@@ -253,17 +279,36 @@ export class SimulationEngine {
       temperature: this.clampRound(SENSOR_RANGES.temperature, temperature),
       humidity: this.clampRound(
         SENSOR_RANGES.humidity,
-        device.baseline.humidity + device.drift.humidity - t.HUMIDITY_CYCLE_AMPLITUDE * cycle,
+        this.historyValue(device, 'humidity', at) + device.drift.humidity,
       ),
       pressure: this.clampRound(
         SENSOR_RANGES.pressure,
-        device.baseline.pressure + device.drift.pressure,
+        this.historyValue(device, 'pressure', at) + device.drift.pressure,
       ),
-      battery: this.clampRound(SENSOR_RANGES.battery, device.battery),
+      battery: this.clampRound(
+        SENSOR_RANGES.battery,
+        device.faultBattery ?? this.historyValue(device, 'battery', at),
+      ),
       signal: Math.round(
-        this.clamp(SENSOR_RANGES.signal, device.baseline.signal + device.drift.signal),
+        this.clamp(
+          SENSOR_RANGES.signal,
+          this.historyValue(device, 'signal', at) + device.drift.signal,
+        ),
       ),
     };
+  }
+
+  private historyValue(device: SimulatedDevice, metric: SensorMetric, at: number): number {
+    return this.history.sample(device.profile, metric, at);
+  }
+
+  /**
+   * DRIFT_LIMIT_STD stationary standard deviations of the walk. The walk x' = (1 - r) x + step * g
+   * has a stationary variance of step^2 / (1 - (1 - r)^2).
+   */
+  private driftLimit(step: number): number {
+    const keep = 1 - this.tuning.DRIFT_REVERSION;
+    return (this.tuning.DRIFT_LIMIT_STD * step) / Math.sqrt(1 - keep * keep);
   }
 
   private clamp({ min, max }: Range, value: number): number {

@@ -4,6 +4,8 @@ import { SENSOR_RANGES, SIMULATOR } from '../config';
 import { EXAMPLE_TS } from '../model/fixtures';
 import { parseTelemetryMessage } from '../model/parse';
 import { encodeMessage } from '../model/protocol';
+import { SENSOR_METRICS } from '../store/device-series';
+import { HistoryModel } from './history-model';
 import { SimulationEngine } from './simulation-engine';
 
 import type {
@@ -145,32 +147,66 @@ describe('SimulationEngine', () => {
     expect(rejoin.ts - (before.at(-1)?.ts ?? 0)).toBeGreaterThanOrEqual(SIMULATOR.DROPOUT_MIN_MS);
   });
 
-  it('produces low battery, depletion (device_offline) and recharge', () => {
+  it('drains the battery after a low_battery fault: depletion (device_offline), then recharge', () => {
     const engine = new SimulationEngine({
       startTime: EXAMPLE_TS,
       deviceCount: 3,
       rateHz: 10,
-      tuning: {
-        DROPOUT_PROBABILITY: 0,
-        BATTERY_INITIAL_MIN: 25,
-        BATTERY_INITIAL_MAX: 30,
-        BATTERY_DRAIN_MIN: 0.05,
-        BATTERY_DRAIN_MAX: 0.05,
-      },
+      tuning: { DROPOUT_PROBABILITY: 0, BATTERY_DRAIN_MIN: 0.5, BATTERY_DRAIN_MAX: 0.5 },
     });
+    engine.injectFault({ kind: 'low_battery', deviceId: 'esp32-02' });
     const messages = run(engine, 2 * MINUTE);
     const low = readings(messages).filter(
       (message) =>
+        message.deviceId === 'esp32-02' &&
         (message.values.battery ?? SENSOR_RANGES.battery.max) < SIMULATOR.LOW_BATTERY_THRESHOLD,
     );
     expect(low.length).toBeGreaterThan(0);
     const depleted = first(
       offlines(messages).filter((message) => message.reason === 'low_battery'),
     );
+    expect(depleted.deviceId).toBe('esp32-02');
 
+    // After the recharge delay the battery follows the history curve again.
     const later = run(engine, 2 * MINUTE + SIMULATOR.RECHARGE_DELAY_MS);
-    const recharged = readings(later).find((message) => message.deviceId === depleted.deviceId);
-    expect(recharged?.values.battery).toBeGreaterThan(SIMULATOR.LOW_BATTERY_THRESHOLD);
+    const recharged = first(readings(later).filter((message) => message.deviceId === 'esp32-02'));
+    const history = new HistoryModel({ deviceCount: 3 });
+    const profile = history.device('esp32-02');
+    if (!profile) throw new Error('missing profile');
+    expect(recharged.values.battery).toBe(history.sample(profile, 'battery', recharged.ts));
+  });
+
+  it('follows the HistoryModel: every live value stays within the drift bound of history', () => {
+    const tuning = { SPIKE_PROBABILITY: 0 };
+    const engine = new SimulationEngine({ startTime: EXAMPLE_TS, rateHz: 2, tuning });
+    const history = new HistoryModel({ tuning });
+    const keep = 1 - SIMULATOR.DRIFT_REVERSION;
+    const bound = (step: number) => (SIMULATOR.DRIFT_LIMIT_STD * step) / Math.sqrt(1 - keep * keep);
+    // Values are rounded to 2 decimals (signal to whole dBm) after adding the drift.
+    const rounding = 0.5 * 10 ** -SIMULATOR.VALUE_DECIMALS;
+    const limits = {
+      temperature: bound(SIMULATOR.TEMPERATURE_DRIFT_STEP) + rounding,
+      humidity: bound(SIMULATOR.HUMIDITY_DRIFT_STEP) + rounding,
+      pressure: bound(SIMULATOR.PRESSURE_DRIFT_STEP) + rounding,
+      battery: rounding,
+      signal: bound(SIMULATOR.SIGNAL_DRIFT_STEP) + 1,
+    };
+    const all = readings(run(engine, 30 * MINUTE));
+    expect(all.length).toBeGreaterThan(10_000);
+    let worst = 0;
+    for (const message of all) {
+      const profile = history.device(message.deviceId);
+      if (!profile) throw new Error('missing profile');
+      for (const metric of SENSOR_METRICS) {
+        const live = message.values[metric]; // eslint-disable-line security/detect-object-injection -- fixed metric names
+        if (live === undefined) continue;
+        const difference = Math.abs(live - history.sample(profile, metric, message.ts));
+        expect(difference).toBeLessThanOrEqual(limits[metric]); // eslint-disable-line security/detect-object-injection -- fixed metric names
+        if (metric === 'temperature') worst = Math.max(worst, difference);
+      }
+    }
+    // The walk is bounded but not degenerate: it does reach a visible deviation.
+    expect(worst).toBeGreaterThan(limits.temperature / 2);
   });
 
   it('supports runtime control: device count, rate and injected faults', () => {

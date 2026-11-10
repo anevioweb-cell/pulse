@@ -122,6 +122,13 @@ export const SIMULATOR = {
   HUMIDITY_CYCLE_AMPLITUDE: 8,
   /** Mean reversion of the random walk per reading (0 = pure walk, 1 = no memory). */
   DRIFT_REVERSION: 0.05,
+  /**
+   * Bound of the live random walk, in stationary standard deviations of the walk (about 0.96 °C,
+   * 3.2 %, 1.9 hPa and 9.6 dBm with the steps below). Live values are the HistoryModel's value
+   * plus the walk, so this bound is also how far live data may stray from REST history (ADR 0026).
+   * Two deviations keep the walk's look (it is reached about 5 % of the time) while bounding it.
+   */
+  DRIFT_LIMIT_STD: 2,
   /** Random-walk step size per reading (standard-ish deviation in sensor units). */
   TEMPERATURE_DRIFT_STEP: 0.15,
   HUMIDITY_DRIFT_STEP: 0.5,
@@ -134,12 +141,12 @@ export const SIMULATOR = {
   DROPOUT_PROBABILITY: 0.002,
   DROPOUT_MIN_MS: 5 * MS_PER_SECOND,
   DROPOUT_MAX_MS: 45 * MS_PER_SECOND,
-  /** Battery drain per reading, in percentage points (randomized per device within this range). */
+  /**
+   * Battery drain per reading after a `low_battery` fault, in percentage points (randomized per
+   * device within this range). Without a fault, the battery follows the HistoryModel's curve.
+   */
   BATTERY_DRAIN_MIN: 0.002,
   BATTERY_DRAIN_MAX: 0.05,
-  /** Initial charge range, so some devices start near the low-battery threshold. */
-  BATTERY_INITIAL_MIN: 15,
-  BATTERY_INITIAL_MAX: 100,
   /** Below this, devices are "low battery"; at 0 they go offline until recharged. */
   LOW_BATTERY_THRESHOLD: 20,
   /** A depleted device comes back (recharged to 100 %) after this long. */

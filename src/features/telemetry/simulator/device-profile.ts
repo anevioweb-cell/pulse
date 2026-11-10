@@ -47,7 +47,6 @@ export interface DeviceProfile {
     readonly signal: number;
   };
   readonly drainPerReading: number;
-  readonly initialBattery: number;
 }
 
 /**
@@ -71,7 +70,6 @@ export function createDeviceProfile(
     signal: uniform(random, tuning.SIGNAL_BASELINE.min, tuning.SIGNAL_BASELINE.max),
   };
   const drainPerReading = uniform(random, tuning.BATTERY_DRAIN_MIN, tuning.BATTERY_DRAIN_MAX);
-  const initialBattery = uniform(random, tuning.BATTERY_INITIAL_MIN, tuning.BATTERY_INITIAL_MAX);
   return {
     index,
     id: `esp32-${String(index + 1).padStart(DEVICE_ID_DIGITS, '0')}`,
@@ -82,6 +80,5 @@ export function createDeviceProfile(
     phase,
     baseline,
     drainPerReading,
-    initialBattery,
   };
 }
