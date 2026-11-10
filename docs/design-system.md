@@ -90,7 +90,7 @@ Under `prefers-reduced-motion: reduce`, every duration token becomes `0.01ms` (n
 
 ## Components
 
-All components live in `src/shared/ui/<Component>/` and are imported only from `@/shared/ui`. Conventions are in [ADR 0007](adr/0007-component-api-conventions.md), and the choice of Radix in [ADR 0008](adr/0008-radix-as-accessibility-base.md). Run `npm run storybook` to browse every variant and state with the theme, direction and locale toolbar. The **Foundations** docs page there replaces the temporary preview page from Phase 2A.
+All components live in `src/shared/ui/<Component>/` and are imported only from `@/shared/ui`, except `TimeSeriesChart` (its own entry point, see below). Conventions are in [ADR 0007](adr/0007-component-api-conventions.md), and the choice of Radix in [ADR 0008](adr/0008-radix-as-accessibility-base.md). Run `npm run storybook` to browse every variant and state with the theme, direction and locale toolbar. The **Foundations** docs page there replaces the temporary preview page from Phase 2A.
 
 ### Catalog
 
@@ -114,7 +114,20 @@ All components live in `src/shared/ui/<Component>/` and are imported only from `
 | **Banner**          | none                                     | `info`, `success`, `warning`, `danger` · optional `actions` · `live`                                           | Icon plus title, so the tone is never color alone. A live region by default: `role="alert"` (assertive) only for `danger`, `role="status"` (polite) otherwise; `live={false}` for banners present from the start. Start border mirrors in RTL. |
 | **StatusIndicator** | none                                     | `online`, `degraded`, `offline`, `unknown` · `sm`, `md`                                                        | The label is required and always visible. The dot also differs by shape (filled circle, diamond, ring, dashed ring) and is decorative. Not a live region unless `role="status"` is passed. The `unknown` pulse stops under reduced motion.     |
 | **KpiCard**         | none                                     | tone `neutral`, `accent`, `success`, `warning`, `danger`, `info` · `loading` · unit, description, icon, action | `role="group"` named by its label. Loading shows a skeleton and sets `aria-busy`, keeping the label. The tone is a start border and icon color only; the label and description carry the meaning.                                              |
+| **TimeSeriesChart** | none (uPlot)                             | color 1 to 6 · `sm`, `md`, `lg` · thresholds                                                                   | `role="img"` named by a summary label; tooltip `aria-hidden`; data-table alternative on the page (see below).                                                                                                                                  |
 | **PageHeader**      | none                                     | description, actions                                                                                           | The page's only `<h1>`, with `tabIndex={-1}` so the router can move focus to it after a navigation (not in the tab order). Sets `document.title` through the messages module.                                                                  |
+
+### TimeSeriesChart (Phase 5B)
+
+A canvas line chart on uPlot ([ADR 0025](adr/0025-chart-library-uplot.md)), in `src/shared/ui/TimeSeriesChart`. It is domain-agnostic: props are plain data and options (`label`, `seriesName`, `unit`, `decimals`, `color` 1 to 6, `thresholds`, `locale`, `size` `sm`/`md`/`lg`), and data goes through an imperative handle (`ref.setData(data, window)`), so streaming updates never render React.
+
+- **Tokens only.** The line uses a chart palette slot (`--color-chart-1` to `--color-chart-6`, colorblind-safe), axes `--color-text-muted`, the grid `--color-border`, thresholds `--color-warning` and `--color-danger`, the tooltip the surface and text roles, and the font is the chart element's own (`text-xs`, `--font-sans`). The colors are read from the computed tokens when the chart is created and again when the root `data-theme` attribute changes (a MutationObserver, so before the next paint), then the existing chart redraws. Line widths, dashes and paddings are named constants in `config.ts`. A visual redesign changes the tokens, not the component.
+- **Gaps** are `null` values and break the line (`spanGaps: false`).
+- **Accessibility:** the chart is `role="img"` named by `label`, a summary written by the page. The tooltip is pointer-only and `aria-hidden`; the accessible alternative is the data table on the device page (ADR 0027, Phase 5B).
+- **Motion:** uPlot does not animate, and the tooltip has no transition, so reduced motion needs nothing.
+- **Own entry point:** import it from `@/shared/ui/TimeSeriesChart`, not from the `@/shared/ui` barrel. uPlot runs code when its module loads (it reads `matchMedia` and the pixel ratio), so nothing that imports the barrel may load it. Only the lazy device page imports it, so uPlot and its stylesheet are in that chunk alone (measured in docs/performance.md).
+
+**RTL rule for charts: time is not mirrored.** The plot area is always left to right (`dir="ltr"`): earlier times on the left, the value axis on the left, threshold labels at the right end. Mirroring time would contradict how time series are read in Arabic interfaces as well, and canvas text with an RTL direction could reorder signs in numbers such as `-50`. Everything around the plot follows the page direction: the card layout, headings, controls, the summary and the data table. The tooltip's text takes the page direction, and it opens on the reading-direction side of the cursor (right in LTR, left in RTL), flipping at the plot's edge.
 
 ### Feature components (Phase 5A)
 

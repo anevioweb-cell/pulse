@@ -1,0 +1,22 @@
+/*
+ * TimeSeriesChart: token overrides for uPlot's stylesheet (uplot/dist/uPlot.min.css, imported next
+ * to this file). uPlot's own rules position its layers; these give its cursor lines and font the
+ * design tokens instead of uPlot's fixed values. The plot area is always left to right (time is
+ * not mirrored, see docs/design-system.md), so uPlot's physical rules are correct inside it.
+ */
+.pulse-chart .uplot {
+  font-family: var(--font-sans);
+  width: 100%;
+}
+
+.pulse-chart .u-hz .u-cursor-x {
+  border-inline-end: 1px dashed var(--color-border-strong);
+}
+
+.pulse-chart .u-hz .u-cursor-y {
+  border-block-end: 1px dashed var(--color-border-strong);
+}
+
+.pulse-chart .u-select {
+  background: var(--color-surface-sunken);
+}
