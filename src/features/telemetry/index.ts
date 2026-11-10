@@ -62,9 +62,12 @@ export {
   selectCounters,
   selectDevice,
   selectDeviceIds,
+  selectHasData,
+  selectOnlineAverage,
   selectMode,
   selectSeriesVersion,
   selectStatusSummary,
+  readingValue,
 } from './store/selectors';
 export type { StatusSummary, TelemetryHooks } from './store/selectors';
 export { TelemetryService } from './service/telemetry-service';
@@ -78,6 +81,8 @@ export {
   useLiveCounters,
   useLiveDevice,
   useLiveDeviceIds,
+  useLiveHasData,
+  useLiveOnlineAverage,
   useLiveMode,
   useLiveLastMessageAt,
   useLiveSeriesVersion,

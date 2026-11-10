@@ -22,3 +22,5 @@ export const useLiveLastMessageAt = liveHooks.useLastMessageAt;
 export const useLiveCounters = liveHooks.useCounters;
 export const useLiveStatusSummary = liveHooks.useStatusSummary;
 export const useLiveSeriesVersion = liveHooks.useSeriesVersion;
+export const useLiveHasData = liveHooks.useHasData;
+export const useLiveOnlineAverage = liveHooks.useOnlineAverage;

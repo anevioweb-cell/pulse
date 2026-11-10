@@ -2,6 +2,7 @@ import { useStore } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 
 import type { DeviceId } from '../model/device';
+import type { SensorMetric, SensorReading } from '../model/reading';
 import type { DeviceState, DeviceStatus, TelemetryState, TelemetryStore } from './telemetry-store';
 
 // How components must subscribe (see docs/architecture.md):
@@ -25,6 +26,46 @@ export const selectSeriesVersion =
   (id: DeviceId) =>
   (state: TelemetryState): number =>
     state.devices.get(id)?.seriesVersion ?? 0;
+
+/** One metric of a reading (a switch, not an index: metric names never index objects). */
+export function readingValue(reading: SensorReading, metric: SensorMetric): number | undefined {
+  switch (metric) {
+    case 'temperature':
+      return reading.temperature;
+    case 'humidity':
+      return reading.humidity;
+    case 'pressure':
+      return reading.pressure;
+    case 'battery':
+      return reading.battery;
+    default:
+      return reading.signal;
+  }
+}
+
+/** Whether any valid message arrived in this session (false until the first one). */
+export const selectHasData = (state: TelemetryState) => state.lastMessageAt !== null;
+
+/**
+ * Mean of `metric` over online devices with a reading, or null if there is none. A number, so
+ * subscribers re-render only when the mean itself changes.
+ */
+export const selectOnlineAverage =
+  (metric: SensorMetric) =>
+  (state: TelemetryState): number | null => {
+    let sum = 0;
+    let count = 0;
+    for (const device of state.devices.values()) {
+      const value =
+        device.status === 'online' && device.latest
+          ? readingValue(device.latest, metric)
+          : undefined;
+      if (value === undefined) continue; // offline, stale, no reading yet, or metric not measured
+      sum += value;
+      count += 1;
+    }
+    return count === 0 ? null : sum / count;
+  };
 
 export type StatusSummary = Readonly<Record<DeviceStatus, number>>;
 
@@ -53,6 +94,10 @@ export function createTelemetryHooks(store: TelemetryStore) {
     useLastMessageAt: () => useStore(store, selectLastMessageAt),
     /** Diagnostics counters. Changes on most publishes: use only in diagnostics views. */
     useCounters: () => useStore(store, selectCounters),
+    /** True once the first valid message arrived: a boolean, so it re-renders at most twice. */
+    useHasData: () => useStore(store, selectHasData),
+    /** Mean of one metric over online devices (null if none). */
+    useOnlineAverage: (metric: SensorMetric) => useStore(store, selectOnlineAverage(metric)),
     /** Online/stale/offline counts, shallow-compared so it re-renders only when a count changes. */
     useStatusSummary: () => useStore(store, useShallow(selectStatusSummary)),
     /** Ring buffer version of one device, for charts that read the buffers directly. */

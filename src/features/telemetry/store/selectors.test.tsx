@@ -37,6 +37,18 @@ function SummaryProbe() {
   return <p>{`online:${String(summary.online)}`}</p>;
 }
 
+function HasDataProbe() {
+  const hasData = hooks.useHasData();
+  count('hasData');
+  return <p>{`hasData:${String(hasData)}`}</p>;
+}
+
+function AverageProbe() {
+  const average = hooks.useOnlineAverage('temperature');
+  count('average');
+  return <p>{`average:${String(average)}`}</p>;
+}
+
 function transport(): FakeTransport {
   const instance = FakeTransport.instances.at(-1);
   if (!instance) throw new Error('No transport');
@@ -112,5 +124,31 @@ describe('selectors and re-renders', () => {
     expect(screen.getByText('online:3')).toBeInTheDocument();
     expect(renders.get('ids')).toBe((initial.get('ids') ?? 0) + 1);
     expect(renders.get('summary')).toBe((initial.get('summary') ?? 0) + 1);
+  });
+
+  it('hasData flips once; the average changes only when an online value does', () => {
+    render(
+      <>
+        <HasDataProbe />
+        <AverageProbe />
+      </>,
+    );
+    expect(screen.getByText('hasData:true')).toBeInTheDocument(); // the announcements count
+    const initial = new Map(renders);
+    act(() => {
+      transport().emit(reading('a', EXAMPLE_TS + 1, 20));
+      transport().emit(reading('b', EXAMPLE_TS + 1, 30));
+      frames.runFrame();
+    });
+    expect(screen.getByText('average:25')).toBeInTheDocument();
+    expect(renders.get('hasData')).toBe(initial.get('hasData'));
+    const afterFirst = renders.get('average');
+    act(() => {
+      // Same values again: the store publishes, the mean is unchanged, no re-render.
+      transport().emit(reading('a', EXAMPLE_TS + 2, 20));
+      transport().emit(reading('b', EXAMPLE_TS + 2, 30));
+      frames.runFrame();
+    });
+    expect(renders.get('average')).toBe(afterFirst);
   });
 });
