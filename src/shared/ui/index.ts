@@ -8,6 +8,7 @@ export * from './EmptyState';
 export * from './ErrorState';
 export * from './IconButton';
 export * from './Input';
+export * from './KpiCard';
 export * from './PageHeader';
 export * from './Select';
 export * from './Skeleton';
