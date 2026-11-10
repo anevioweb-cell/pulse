@@ -9,9 +9,9 @@ import { ApiError } from '@/shared/api';
 import { messages } from '@/shared/i18n';
 
 import { expectNoAxeViolations } from '../../../test/axe';
+import { createLiveHarness } from '../../../test/live-harness';
 import { DeviceCard } from '../components/DeviceCard';
 import { DeviceGrid } from '../components/DeviceGrid';
-import { createLiveHarness } from '../testing/live-harness';
 import { OverviewPage } from './OverviewPage';
 
 let harness: ReturnType<typeof createLiveHarness>;

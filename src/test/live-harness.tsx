@@ -72,7 +72,10 @@ const VALUES: SensorReading = {
   signal: -60,
 };
 
-export function createLiveHarness(api: TelemetryApi = new DemoTelemetryApi({ ruleStorage: null })) {
+export function createLiveHarness(
+  api: TelemetryApi = new DemoTelemetryApi({ ruleStorage: null }),
+  { initialPath = '/' }: { initialPath?: string } = {},
+) {
   const transport = new ManualTransport();
   const pending = new Set<() => void>();
   const service = new TelemetryService({
@@ -122,6 +125,16 @@ export function createLiveHarness(api: TelemetryApi = new DemoTelemetryApi({ rul
       }
       publish();
     },
+    /** Marks devices offline (`device_offline`), then publishes once. */
+    offline(ids: readonly string[]) {
+      ts += 1;
+      for (const deviceId of ids) {
+        transport.emit(
+          encodeMessage({ v: 1, type: 'device_offline', ts, deviceId, reason: 'shutdown' }),
+        );
+      }
+      publish();
+    },
     /** One reading per entry, then one publish (one frame). */
     readings(entries: readonly { id: string; values?: Partial<SensorReading> }[]) {
       ts += 1;
@@ -141,7 +154,7 @@ export function createLiveHarness(api: TelemetryApi = new DemoTelemetryApi({ rul
       publish();
     },
     wrapper: ({ children }: { children: ReactNode }) => (
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[initialPath]}>
         <QueryClientProvider client={client}>
           <TelemetryApiProvider api={api}>{children}</TelemetryApiProvider>
         </QueryClientProvider>
