@@ -1,5 +1,5 @@
 // Display rules for device data. Each value states why.
-import { STORE } from '@/features/telemetry';
+import { PREFETCH, STORE } from '@/features/telemetry';
 import type { SensorMetric } from '@/features/telemetry';
 
 export const DEVICE_DISPLAY = {
@@ -44,4 +44,42 @@ export const DEVICE_TABLE = {
    * about 12 rows, the default demo fleet.
    */
   INITIAL_VIEWPORT_PX: 600,
+} as const;
+
+const MS_PER_SECOND = 1000;
+const SECONDS_PER_MINUTE = 60;
+const MS_PER_MINUTE = SECONDS_PER_MINUTE * MS_PER_SECOND;
+const MINUTES_PER_HOUR = 60;
+const HOURS_PER_DAY = 24;
+
+/** Device detail charts: ranges, gap rule and redraw cadence (ADR 0026). */
+export const DEVICE_CHART = {
+  /**
+   * Span of each range. `live` is one minute: 60 samples at the default 1 Hz, enough to read the
+   * current trend, and about 15 px per sample on a 900 px chart, so single samples stay visible.
+   */
+  RANGE_SPAN_MS: {
+    live: MS_PER_MINUTE,
+    '5m': 5 * MS_PER_MINUTE,
+    '1h': MINUTES_PER_HOUR * MS_PER_MINUTE,
+    '24h': HOURS_PER_DAY * MINUTES_PER_HOUR * MS_PER_MINUTE,
+  },
+  /**
+   * Two consecutive samples further apart than this many sample intervals are drawn as a gap.
+   * 3 means at least two consecutive samples are missing: a single lost sample (an interval of
+   * 2) is bridged as jitter, while a dropout or an offline period (the store calls a device
+   * stale after 15 s, 15 missed samples at 1 Hz) always breaks the line.
+   */
+  GAP_FACTOR: 3,
+  /**
+   * History requests end on this step, like the prefetch (PREFETCH.RANGE_ALIGN_MS), so the
+   * device page's 1 h temperature chart reuses the prefetched cache entry, and a request key
+   * changes only every 30 s.
+   */
+  HISTORY_ALIGN_MS: PREFETCH.RANGE_ALIGN_MS,
+  /**
+   * A window that ends "now" moves even when no sample arrives (a silent device): the charts
+   * redraw at least this often while the clock passes, so an empty tail grows visibly.
+   */
+  CLOCK_TICK_MS: MS_PER_SECOND,
 } as const;
