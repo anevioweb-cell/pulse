@@ -248,6 +248,12 @@ export async function restoreQueryCache(options: QueryPersistenceOptions): Promi
       skipped += 1;
       continue;
     }
+    // A fetch can finish before the restore does: never replace data that is at least as new.
+    const current = client.getQueryState(entry.key);
+    if (current && current.dataUpdatedAt >= entry.updatedAt) {
+      skipped += 1;
+      continue;
+    }
     client.setQueryData(entry.key, data.data, { updatedAt: entry.updatedAt });
     restored += 1;
   }

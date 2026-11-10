@@ -88,6 +88,19 @@ describe('persisted query cache', () => {
     expect(target.getQueryState(telemetryKeys.deviceList('demo'))?.dataUpdatedAt).toBe(NOW - 1000);
   });
 
+  it('never replaces data that was fetched before the restore finished', async () => {
+    const storage = await stored(await populatedClient(NOW - 1000));
+    const target = createQueryClient();
+    const fresher = [{ ...(await demo.listDevices())[0], name: 'Fetched meanwhile' }];
+    target.setQueryData(telemetryKeys.deviceList('demo'), fresher, { updatedAt: NOW - 10 });
+
+    const report = await restoreQueryCache(options(target, storage));
+
+    expect(report).toEqual({ status: 'restored', restored: 2, skipped: 1 });
+    expect(target.getQueryData(telemetryKeys.deviceList('demo'))).toEqual(fresher);
+    expect(target.getQueryState(telemetryKeys.deviceList('demo'))?.dataUpdatedAt).toBe(NOW - 10);
+  });
+
   it('writes after a debounce and stops when asked', async () => {
     vi.useFakeTimers({ now: NOW });
     const client = await populatedClient();
