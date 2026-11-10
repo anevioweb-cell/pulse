@@ -22,3 +22,9 @@ export const PREFERENCES = {
   /** The local mock server (`npm run server`), so Live Mode works out of the box in development. */
   DEFAULT_LIVE_URL: `ws://${MOCK_SERVER.DEFAULT_HOST}:${String(MOCK_SERVER.DEFAULT_PORT)}`,
 } as const;
+
+/** HTTP status codes the router uses for route errors. */
+export const HTTP_STATUS = {
+  /** An unknown path, or a route parameter that fails validation (an invalid device id). */
+  NOT_FOUND: 404,
+} as const;

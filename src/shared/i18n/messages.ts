@@ -5,6 +5,53 @@
 export const messages = {
   app: {
     name: 'Pulse',
+    /** Browser tab title for a page. */
+    documentTitle: (page: string) => `${page} · Pulse`,
+    skipLink: 'Skip to main content',
+    loading: 'Loading…',
+  },
+  nav: {
+    label: 'Main',
+    overview: 'Overview',
+    devices: 'Devices',
+    alerts: 'Alerts',
+    settings: 'Settings',
+  },
+  theme: {
+    /** Button label; `current` is one of the names below. */
+    toggle: (current: string) => `Theme: ${current}. Change theme`,
+    system: 'System',
+    light: 'Light',
+    dark: 'Dark',
+  },
+  pages: {
+    overview: { title: 'Overview', description: 'Live status of every sensor in the fleet.' },
+    devices: { title: 'Devices', description: 'Every sensor, its location and latest readings.' },
+    device: {
+      /** `id` is a validated device id. */
+      title: (id: string) => `Device ${id}`,
+      back: 'Back to devices',
+      comingSoon: 'Charts and history for this device arrive in a later release.',
+    },
+    alerts: {
+      title: 'Alerts',
+      comingSoon: 'Alert history and rule editing arrive in a later release.',
+    },
+    settings: {
+      title: 'Settings',
+      comingSoon: 'Settings arrive in a later release. The data source is in the header.',
+    },
+    notFound: {
+      title: 'Page not found',
+      description: 'This address does not match any page, or the device does not exist.',
+      home: 'Go to the overview',
+    },
+    routeError: {
+      title: 'This page could not be shown',
+      problem: 'Something went wrong while loading this page.',
+      description: 'Try again, or come back later.',
+      retry: 'Try again',
+    },
   },
   lastUpdated: {
     /** No successful refresh yet. */

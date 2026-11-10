@@ -1,14 +1,13 @@
 import { QueryDevtools } from './query-devtools';
 import { AppSessionProvider } from './session/session-context';
-import { StatusBanners } from './status-banners';
 
 import type { SessionController } from './session/session-controller';
 import type { ReactNode } from 'react';
 
 /**
  * App-wide providers: the active session (its QueryClient and TelemetryApi, rebuilt for each
- * mode by the SessionController), the status banners (offline, update available) and, in
- * development only, the Query devtools.
+ * mode by the SessionController) and, in development only, the Query devtools. The status banners
+ * live in the layout (AppLayout).
  */
 export function AppProviders({
   controller,
@@ -19,7 +18,6 @@ export function AppProviders({
 }) {
   return (
     <AppSessionProvider controller={controller}>
-      <StatusBanners />
       {children}
       <QueryDevtools />
     </AppSessionProvider>
