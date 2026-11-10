@@ -20,3 +20,28 @@ export const DEVICE_DISPLAY = {
    */
   LAST_SEEN_REFRESH_MS: STORE.STALE_AFTER_MS / 3,
 } as const;
+
+/** Devices table: URL state limits, debounce and virtualization geometry. */
+export const DEVICE_TABLE = {
+  /**
+   * Longest search text kept in the URL: a device name or location is at most 64 characters
+   * (PROTOCOL.NAME_MAX_LENGTH), so a longer query can never match and is treated as hostile.
+   */
+  SEARCH_MAX_LENGTH: 64,
+  /**
+   * Any single query-string value longer than this is ignored before parsing: the longest valid
+   * value is the hidden-column list (8 ids, ~80 characters).
+   */
+  MAX_PARAM_LENGTH: 256,
+  /** The search box writes the URL this long after the last keystroke (replace, not push). */
+  SEARCH_DEBOUNCE_MS: 250,
+  /** Fixed row height in px (Tailwind `h-12`), so the virtualizer never has to measure rows. */
+  ROW_HEIGHT_PX: 48,
+  /** Rows rendered above and below the viewport, so fast scrolling does not show blank rows. */
+  OVERSCAN_ROWS: 8,
+  /**
+   * Viewport height assumed before the first measurement (and in jsdom, which has no layout):
+   * about 12 rows, the default demo fleet.
+   */
+  INITIAL_VIEWPORT_PX: 600,
+} as const;

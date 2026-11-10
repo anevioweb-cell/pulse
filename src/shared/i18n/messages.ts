@@ -134,6 +134,43 @@ export const messages = {
     lastSeen: (relative: string) => `Seen ${relative}`,
     neverSeen: 'Not seen yet',
     noValue: '—',
+    table: {
+      columns: {
+        name: 'Name',
+        location: 'Location',
+        status: 'Status',
+        lastSeen: 'Last seen',
+      },
+      /** Column header with its unit, e.g. "Temperature (°C)". */
+      withUnit: (label: string, unit: string) => `${label} (${unit})`,
+      caption: 'Devices',
+      /** Screen-reader summary of the sort; `column` is a column name. */
+      sortedBy: (column: string, descending: boolean) =>
+        `Sorted by ${column}, ${descending ? 'descending' : 'ascending'}.`,
+      /** Both are formatted numbers. */
+      shown: (shown: string, total: string) => `Showing ${shown} of ${total} devices`,
+      searchLabel: 'Search devices',
+      searchPlaceholder: 'Name, location or id',
+      statusLabel: 'Status',
+      statusOptions: {
+        all: 'All statuses',
+        online: 'Online',
+        stale: 'Stale',
+        offline: 'Offline',
+        unknown: 'No data yet',
+      },
+      columnsMenu: 'Columns',
+      columnsMenuLabel: 'Show or hide columns',
+      noMatchTitle: 'No devices match',
+      noMatchDescription: 'Try another search or status, or clear the filters.',
+      clearFilters: 'Clear filters',
+      loading: 'Loading devices',
+      errorTitle: 'Could not load devices',
+      errorDescription: 'Check the connection to the server, then try again.',
+      retry: 'Try again',
+      emptyTitle: 'No devices yet',
+      emptyDescription: 'Devices appear here once they are registered with the server.',
+    },
   },
   overview: {
     summaryHeading: 'At a glance',
