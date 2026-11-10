@@ -151,4 +151,25 @@ describe('selectors and re-renders', () => {
     });
     expect(renders.get('average')).toBe(afterFirst);
   });
+
+  it('the status signature changes on a status change, not on a reading', () => {
+    function SignatureProbe() {
+      const signature = hooks.useStatusSignature();
+      count('signature');
+      return <p>{signature}</p>;
+    }
+    render(<SignatureProbe />);
+    const initial = renders.get('signature');
+    act(() => {
+      transport().emit(reading('a', EXAMPLE_TS + 1, 25));
+      frames.runFrame();
+    });
+    expect(renders.get('signature')).toBe(initial);
+    act(() => {
+      transport().emit(announce('c'));
+      frames.runFrame();
+    });
+    expect(screen.getByText('a:online|b:online|c:online|')).toBeInTheDocument();
+    expect(renders.get('signature')).toBe((initial ?? 0) + 1);
+  });
 });

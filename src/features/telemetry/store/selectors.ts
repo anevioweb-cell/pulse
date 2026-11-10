@@ -67,6 +67,19 @@ export const selectOnlineAverage =
     return count === 0 ? null : sum / count;
   };
 
+/**
+ * Every device's status as one string ("a:online|b:stale"). A string, so subscribers re-render
+ * only when some device changes status (rare), never on a reading: views that filter or group by
+ * status recompute exactly then.
+ */
+export function selectStatusSignature(state: TelemetryState): string {
+  let signature = '';
+  for (const id of state.deviceIds) {
+    signature += `${id}:${state.devices.get(id)?.status ?? ''}|`;
+  }
+  return signature;
+}
+
 export type StatusSummary = Readonly<Record<DeviceStatus, number>>;
 
 export function selectStatusSummary(state: TelemetryState): StatusSummary {
@@ -98,6 +111,8 @@ export function createTelemetryHooks(store: TelemetryStore) {
     useHasData: () => useStore(store, selectHasData),
     /** Mean of one metric over online devices (null if none). */
     useOnlineAverage: (metric: SensorMetric) => useStore(store, selectOnlineAverage(metric)),
+    /** Changes only when some device's status changes (see selectStatusSignature). */
+    useStatusSignature: () => useStore(store, selectStatusSignature),
     /** Online/stale/offline counts, shallow-compared so it re-renders only when a count changes. */
     useStatusSummary: () => useStore(store, useShallow(selectStatusSummary)),
     /** Ring buffer version of one device, for charts that read the buffers directly. */
