@@ -3,6 +3,7 @@ import { z } from 'zod/mini';
 import { stripUnsafeCharacters } from '@/features/telemetry';
 
 import { DEVICE_TABLE } from '../config';
+import { singleParam } from './url-params';
 
 /** Every column of the devices table, in display order. */
 export const DEVICE_COLUMNS = [
@@ -76,14 +77,8 @@ const hiddenSchema = z.array(hideableSchema).check(
   z.refine((ids) => new Set(ids).size === ids.length, { message: 'duplicate column' }),
 );
 
-/** The single value of `key`, or null when it is missing, repeated or too long to be ours. */
-function single(params: URLSearchParams, key: string): string | null {
-  const values = params.getAll(key);
-  if (values.length !== 1) return null;
-  const [value] = values;
-  if (value === undefined || value.length > DEVICE_TABLE.MAX_PARAM_LENGTH) return null;
-  return value;
-}
+const single = (params: URLSearchParams, key: string) =>
+  singleParam(params, key, DEVICE_TABLE.MAX_PARAM_LENGTH);
 
 function parseSort(raw: string | null): TableSort {
   if (raw === null) return DEFAULT_TABLE_STATE.sort;
