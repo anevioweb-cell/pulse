@@ -138,6 +138,15 @@ Built from the shared components, living in their features, with stories and tes
 - **DevicesTable** (`features/devices`): semantic table with virtualized rows (ADR 0022). Its stories cover 12 and 200 rows, a sorted and filtered URL, and no matches.
 - **DeviceCard** (`features/overview`): a card whose device name is a stretched link. The focus ring is drawn on the card (`has-focus-visible:`), and hover or focus prefetches the device page's data.
 
+### Feature components (Phase 5B)
+
+In `features/devices/components/detail/`, with tests and stories where they have no live dependency:
+
+- **ChartControls:** the range as native radio buttons styled as a segmented control (`has-checked:` and `has-focus-visible:` on the labels), and a pause toggle with `aria-pressed`. Stories: two ranges and RTL.
+- **ChartDataTable:** the accessible alternative to a chart: a captioned snapshot table in a focusable, named scroll region, newest first, capped at 300 rows. Stories: default, capped, empty, RTL.
+- **DeviceChart:** a card per metric with the chart, an expand toggle, the "Recorded since" or history note, and the table toggle. It needs the live store and the query client, so it is covered by the page tests instead of a story.
+- **Status badge, banner and latest values:** the existing `DeviceStatusBadge` and `Banner`, and a `dl` of metric cards.
+
 The app also draws a focus ring on every focusable element through a base `:focus-visible` rule (`src/app/index.css`, `outline-focus-ring`, offset 2), so plain links and focused headings match the components' `focusRing`.
 
 ### Checklist for adding a new component
