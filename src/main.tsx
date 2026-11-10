@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from '@/app/App';
 import { AppProviders } from '@/app/providers';
 import { registerServiceWorker } from '@/app/pwa/register';
+import { SessionController } from '@/app/session/session-controller';
 import { ThemeProvider } from '@/shared/theme';
 import '@/app/index.css';
 
@@ -13,10 +14,15 @@ if (!rootElement) {
   throw new Error('Root element #root not found');
 }
 
+// Builds the API, QueryClient and live session for the stored mode (Demo by default) and starts
+// them outside React, so StrictMode's double effects cannot start anything twice.
+const session = new SessionController();
+session.start();
+
 createRoot(rootElement).render(
   <StrictMode>
     <ThemeProvider>
-      <AppProviders>
+      <AppProviders controller={session}>
         <App />
       </AppProviders>
     </ThemeProvider>

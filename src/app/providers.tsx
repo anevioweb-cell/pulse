@@ -1,25 +1,27 @@
-import { QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
-
-import { createQueryClient } from '@/shared/api';
-
 import { QueryDevtools } from './query-devtools';
+import { AppSessionProvider } from './session/session-context';
 import { StatusBanners } from './status-banners';
 
+import type { SessionController } from './session/session-controller';
 import type { ReactNode } from 'react';
 
 /**
- * App-wide providers: the server-state cache (one QueryClient per app instance, created once),
- * the status banners (offline, update available) and, in development only, the Query devtools. The TelemetryApi
- * provider and persistence are wired here when the app starts reading server data (Phase 5).
+ * App-wide providers: the active session (its QueryClient and TelemetryApi, rebuilt for each
+ * mode by the SessionController), the status banners (offline, update available) and, in
+ * development only, the Query devtools.
  */
-export function AppProviders({ children }: { children: ReactNode }) {
-  const [client] = useState(createQueryClient);
+export function AppProviders({
+  controller,
+  children,
+}: {
+  controller: SessionController;
+  children: ReactNode;
+}) {
   return (
-    <QueryClientProvider client={client}>
+    <AppSessionProvider controller={controller}>
       <StatusBanners />
       {children}
       <QueryDevtools />
-    </QueryClientProvider>
+    </AppSessionProvider>
   );
 }
